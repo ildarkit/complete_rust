@@ -1,9 +1,7 @@
 use crate::RUDIS_DB;
 use resp::Value;
-use futures::future::{self, BoxFuture};
 
-pub fn process_client_request(decoded_msg: Value)
--> BoxFuture<'static, Result<Vec<u8>, std::io::Error>> {
+pub fn process_client_request(decoded_msg: Value) -> Vec<u8> {
     let reply = if let Value::Array(v) = decoded_msg {
         match &v[0] {
             Value::Bulk(ref s) if s == "GET" || s == "get" => {
@@ -22,7 +20,7 @@ pub fn process_client_request(decoded_msg: Value)
     };
 
     match reply {
-        Ok(r) | Err(r) => Box::pin(future::ok(r.encode())),
+        Ok(r) | Err(r) => r.encode(),
     }
 }
 
