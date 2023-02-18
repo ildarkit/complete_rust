@@ -5,10 +5,11 @@ use lazy_static::lazy_static;
 use std::collections::HashMap;
 use std::net::SocketAddr;
 use std::sync::Mutex;
+use anyhow::Error;
 use tokio::net::{TcpListener, TcpStream};
 use tokio_util::codec::Decoder;
 use futures::stream::StreamExt;
-use futures::{SinkExt, TryStreamExt, FutureExt};
+use futures::{SinkExt, TryFutureExt};
 use std::env;
 
 mod commands;
@@ -19,16 +20,17 @@ lazy_static! {
         Mutex::new(HashMap::new());
 }
 
-async fn handle_client(client: TcpStream) -> Result<(), std::io::Error> {
+async fn handle_client(client: TcpStream) -> Result<(), Error> {
     let (mut tx, rx) = RespCodec.framed(client).split();
-    let mut reply = rx.and_then(process_client_request);
-    let task = tx.send_all(&mut reply).then(|res| async {
-        if let Err(e) = res {
-            eprintln!("failed to process connection; error = {:?}", e);
-        }
-        Ok::<(), std::io::Error>(())
-    });
-    tokio::spawn(task);
+    let (input, _) = rx.into_future().await;
+    let input = input.unwrap().unwrap();
+    let reply = process_client_request(input);
+    tx.send(reply)
+        .map_err(|e| {
+            let msg = format!("Failed to process connection; error = {:?}", e);
+            Error::msg(msg)
+        })
+        .await?; 
     Ok(())
 }
 
@@ -43,10 +45,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let listener = TcpListener::bind(&addr).await?;
     println!("rudis_async listening on: {}", addr);
 
-    loop {
-        let (client, _) = listener
-            .accept()
-            .await?;
-        handle_client(client).await;
+    while let Ok((client, addr)) = listener.accept().await {
+        println!("Client connected: {:?}", addr);
+        tokio::spawn(handle_client(client));
     }
+    Ok(())
 }
