@@ -3,8 +3,8 @@ use std::cmp::Ordering;
 use std::cell::RefCell;
 use std::rc::Rc;
 
-type BareTree<T> = Rc<RefCell<Node<T>>>;
-type Tree<T> = Option<BareTree<T>>;
+pub type BareTree<T> = Rc<RefCell<Node<T>>>;
+pub type Tree<T> = Option<BareTree<T>>;
 
 #[derive(PartialEq, Copy, Clone)]
 enum Child {
@@ -28,41 +28,51 @@ enum Rotation {
     Right,
 }
 
-#[derive(Default, PartialEq)]
-enum Color {
+#[derive(Debug, Default, PartialEq, Copy, Clone)]
+pub enum Color {
     #[default]
     Red,
     Black,
 }
 
 #[derive(Default)]
-struct Node<T> {
+pub struct Node<T: Copy + Clone> {
     pub color: Color,
     pub key: T,
-    pub parent: Tree<T>,
+    parent: Tree<T>,
     left: Tree<T>,
     right: Tree<T>,
 }
 
-impl<T: PartialEq> PartialEq for Node<T> {
+impl<T: Default + Copy + Clone> Node<T> {
+    fn default_from(&self) -> Self {
+        Self {
+            color: self.color,
+            key: self.key,
+            ..Default::default()
+        }
+    }
+}
+
+impl<T: PartialEq + Copy + Clone> PartialEq for Node<T> {
     fn eq(&self, other: &Node<T>) -> bool {
         self.key == other.key
     }
 }
 
-impl<T: PartialOrd> PartialOrd for Node<T> {
+impl<T: PartialOrd + Copy + Clone> PartialOrd for Node<T> {
     fn partial_cmp(&self, other: &Node<T>) -> Option<Ordering> {
         self.key.partial_cmp(&other.key)
     }
 }
 
 #[derive(Default)]
-pub struct RedBlackTree<T> {
+pub struct RedBlackTree<T: Copy + Clone> {
     root: Tree<T>,
     pub length: u64,
 }
 
-impl<T: Default + PartialEq + PartialOrd> RedBlackTree<T> {
+impl<T: Default + PartialEq + PartialOrd + Copy + Clone> RedBlackTree<T> {
     pub fn new() -> Self {
         Self { ..Default::default() }
     }
@@ -119,13 +129,32 @@ impl<T: Default + PartialEq + PartialOrd> RedBlackTree<T> {
         self.fixup(new_node);
     }
 
+    pub fn find(&self, value: T) -> Option<Node<T>> {
+        let value = Self::create_node(value);
+        let mut current = self.root.clone();
+        while let Some(node) = current {
+            if node.clone() == value.clone() {
+                let inner_node = node.replace(Default::default());
+                let res = Some(inner_node.default_from());
+                node.replace(inner_node);
+                return res;
+            }
+            if value <= node.clone() {
+                current = node.borrow().left.clone();
+            } else {
+                current = node.borrow().right.clone();
+            }
+        }
+        None
+    }
+
     fn fixup(&mut self, inserted: BareTree<T>) {
         let mut current = inserted.clone();
         while let Some(ref parent) = current.clone().borrow().parent {
             match parent.borrow().color {
                 Color::Red => {
                     let child = Self::current_is_child(current.clone());
-                    let mut rotations;
+                    let rotations;
                     match child.clone() {
                         Child::Left => {
                             rotations = (Rotation::Left, Rotation::Right);
