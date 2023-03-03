@@ -218,9 +218,61 @@ impl<T: Default + PartialEq + PartialOrd> RedBlackTree<T> {
             Child::Right => node == parent.borrow().right.as_ref().unwrap().clone(),
             Child::Left => node == parent.borrow().left.as_ref().unwrap().clone(),
         }
-    } 
-    
-    fn rotate(&mut self, _node: BareTree<T>, _rotation: Rotation, _child: &Child) {
-        unimplemented!();
     }
+
+    fn rotate(&mut self, node: BareTree<T>, rotation: Rotation, child: &Child) {
+        let (node_parent, new_parent, new_parent_child) = match rotation {
+            Rotation::Left => {
+                let new_parent = node.borrow().right.clone();
+                let new_parent_child = match new_parent.clone() {
+                    Some(ref p) => p.borrow().left.clone(),
+                    None => None,
+                };
+                node.borrow_mut().right = new_parent_child.clone();
+                (node.borrow().parent.clone(),
+                    new_parent,
+                    new_parent_child)
+            }
+            Rotation::Right => {
+                let new_parent = node.borrow().left.clone();
+                let new_parent_child = match new_parent.clone() {
+                    Some(ref p) => p.borrow().right.clone(),
+                    None => None,
+                };
+                node.borrow_mut().left = new_parent_child.clone();
+                (node.borrow().parent.clone(),
+                    new_parent,
+                    new_parent_child)
+            }
+        };
+
+        if let Some(ref npc) = new_parent_child {
+            npc.borrow_mut().parent = Self::to_node(node.clone());
+        } 
+        if let Some(ref np) = new_parent {
+            np.borrow_mut().parent = node.borrow().parent.clone();
+        }
+
+        if node_parent.is_none() {
+            self.root = new_parent.clone();
+        } else {
+            match child {
+                Child::Left => {
+                    node_parent.as_ref().unwrap().borrow_mut()
+                        .left = new_parent.clone();
+                    if let Some(ref np) = new_parent {
+                        np.borrow_mut().left = Self::to_node(node.clone());
+                    }
+                }
+                Child::Right => {
+                    node_parent.as_ref().unwrap().borrow_mut()
+                        .right = new_parent.clone();
+                    if let Some(ref np) = new_parent {
+                        np.borrow_mut().right = Self::to_node(node.clone());
+                    }
+                }
+            }
+        }
+        node.borrow_mut().parent = new_parent.clone(); 
+    } 
 }
