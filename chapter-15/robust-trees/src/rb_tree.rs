@@ -143,13 +143,14 @@ impl<T: Default + PartialEq + PartialOrd> RedBlackTree<T> {
     }
 
     fn current_is_child(node: BareTree<T>) -> Child {
-        let left = node.borrow()
-            .parent.as_ref().unwrap().borrow()
-            .left.clone();
-        let is_left = 
-            if let Some(ref left) = left {
-                left.clone() == node.clone()
-            } else { false };
+        let left  = match node.borrow().parent {
+            Some(ref parent) => parent.borrow().left.clone(),
+            None => None,
+        };
+        let is_left = match left {
+            Some(ref left) => left.clone() == node.clone(),
+            None => false,
+        };
         match is_left {
             true => Child::Left,
             false => Child::Right,
