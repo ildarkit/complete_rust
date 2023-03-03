@@ -253,22 +253,21 @@ impl<T: Default + PartialEq + PartialOrd> RedBlackTree<T> {
             np.borrow_mut().parent = node.borrow().parent.clone();
         }
 
-        if node_parent.is_none() {
-            self.root = new_parent.clone();
-        } else {
-            match child {
-                Child::Left => {
-                    node_parent.as_ref().unwrap().borrow_mut()
-                        .left = new_parent.clone();
-                    if let Some(ref np) = new_parent {
-                        np.borrow_mut().left = Self::to_node(node.clone());
+        match node_parent {
+            None => self.root = new_parent.clone(),
+            Some(ref node_parent) => {
+                match child {
+                    Child::Left => {
+                        node_parent.borrow_mut().left = new_parent.clone();
+                        if let Some(ref np) = new_parent {
+                            np.borrow_mut().left = Self::to_node(node.clone());
+                        }
                     }
-                }
-                Child::Right => {
-                    node_parent.as_ref().unwrap().borrow_mut()
-                        .right = new_parent.clone();
-                    if let Some(ref np) = new_parent {
-                        np.borrow_mut().right = Self::to_node(node.clone());
+                    Child::Right => {
+                        node_parent.borrow_mut().right = new_parent.clone();
+                        if let Some(ref np) = new_parent {
+                            np.borrow_mut().right = Self::to_node(node.clone());
+                        }
                     }
                 }
             }
