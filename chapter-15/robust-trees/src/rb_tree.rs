@@ -122,27 +122,19 @@ impl<T: Default + PartialEq + PartialOrd> RedBlackTree<T> {
     fn fixup(&mut self, inserted: BareTree<T>) {
         let mut current = inserted.clone();
         while let Some(ref parent) = current.clone().borrow().parent {
-            let parent = parent.clone();
-            match parent.clone().borrow().color {
+            match parent.borrow().color {
                 Color::Red => {
-                    match Self::current_is_child(current.clone()) {
+                    let child = Self::current_is_child(current.clone());
+                    let mut rotations;
+                    match child.clone() {
                         Child::Left => {
-                           current = self.fix_subtree(
-                                parent.clone(),
-                                current.clone(),
-                                &Child::Right,
-                                (Rotation::Left, Rotation::Right),
-                            ) 
+                            rotations = (Rotation::Left, Rotation::Right);
                         },
                         Child::Right => {
-                            current = self.fix_subtree(
-                                parent.clone(),
-                                current.clone(),
-                                &Child::Left,
-                                (Rotation::Right, Rotation::Left),
-                            )
+                            rotations = (Rotation::Right, Rotation::Left);
                         },
                     }
+                    current = self.fix_subtree(parent, current, &!child, rotations);
                 },
                 Color::Black => break,
             }
@@ -156,7 +148,7 @@ impl<T: Default + PartialEq + PartialOrd> RedBlackTree<T> {
             .left.clone();
         let is_left = 
             if let Some(ref left) = left {
-                *left == node
+                left.clone() == node.clone()
             } else { false };
         match is_left {
             true => Child::Left,
@@ -166,7 +158,7 @@ impl<T: Default + PartialEq + PartialOrd> RedBlackTree<T> {
 
     fn fix_subtree(
         &mut self,
-        parent: BareTree<T>,
+        parent: &BareTree<T>,
         current: BareTree<T>,
         child: &Child,
         rotations: (Rotation, Rotation)
