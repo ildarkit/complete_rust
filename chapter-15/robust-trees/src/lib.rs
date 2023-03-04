@@ -27,4 +27,17 @@ mod tests {
             assert_eq!(node.key, i);
         }
     }
+
+    #[test]
+    fn walk_test() {
+        let mut rb_tree = RedBlackTree::new();
+        let mut values: Vec<i32> = Vec::with_capacity(100);
+        let mut result: Vec<i32> = Vec::with_capacity(100);
+        for i in 1..=100 {
+            rb_tree.insert(i);
+            values.push(i);
+        }
+        rb_tree.walk_in_order(|v| result.push(*v));
+        assert_eq!(values, result);
+    }
 }
