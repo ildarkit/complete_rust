@@ -3,6 +3,7 @@ mod rb_tree;
 #[cfg(test)]
 mod tests {
     use super::rb_tree::*;
+    use rand::prelude::*;
 
     #[test]
     fn not_found_test() {
@@ -29,13 +30,28 @@ mod tests {
     }
 
     #[test]
-    fn walk_test() {
+    fn walk_sorted_values_test() {
         let mut rb_tree = RedBlackTree::new();
         let mut values: Vec<i32> = Vec::with_capacity(100);
         let mut result: Vec<i32> = Vec::with_capacity(100);
         for i in 1..=100 {
             rb_tree.insert(i);
             values.push(i);
+        }
+        rb_tree.walk_in_order(|v| result.push(*v));
+        assert_eq!(values, result);
+    }
+
+    #[test]
+    fn walk_random_values_test() {
+        let mut rb_tree = RedBlackTree::new();
+        let mut rng = thread_rng();
+        let mut values: Vec<i32> = (1..=100).collect();
+        let mut result: Vec<i32> = Vec::with_capacity(100);
+
+        values.shuffle(&mut rng);
+        for i in &values {
+            rb_tree.insert(*i);
         }
         rb_tree.walk_in_order(|v| result.push(*v));
         assert_eq!(values, result);
