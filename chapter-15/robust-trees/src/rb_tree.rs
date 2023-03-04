@@ -75,32 +75,7 @@ pub struct RedBlackTree<T: Copy + Clone> {
 impl<T: Default + PartialEq + PartialOrd + Copy + Clone> RedBlackTree<T> {
     pub fn new() -> Self {
         Self { ..Default::default() }
-    }
-
-    fn create_node(key: T) -> BareTree<T> {
-        Rc::new(RefCell::new(Node {
-            key,
-            ..Default::default() 
-        }))
-    }
-
-    fn to_node(node: BareTree<T>) -> Tree<T> {
-        Some(node)
-    }
-
-    fn find_parent(current: Tree<T>, new_node: BareTree<T>) -> BareTree<T> {
-        let mut parent = Default::default();
-        let mut current = current.clone();
-        while let Some(ref node) = current.clone() {
-            parent = node.clone();
-            if new_node < node.clone() {
-                current = node.borrow().left.clone();
-            } else {
-                current = node.borrow().right.clone();
-            }
-        }
-        parent.clone()
-    }
+    } 
 
     pub fn insert(&mut self, value: T) {
         self.length += 1;
@@ -146,6 +121,44 @@ impl<T: Default + PartialEq + PartialOrd + Copy + Clone> RedBlackTree<T> {
             }
         }
         None
+    }
+
+    pub fn walk_in_order(&self, mut callback: impl FnMut(&T) -> ()) {
+        self.go_walk_in_order(&self.root, &mut callback);
+    }
+
+    fn go_walk_in_order(&self, node: &Tree<T>, callback: &mut impl FnMut(&T) -> ()) {
+        if let Some(n) = node {
+            let n = n.borrow();
+            self.go_walk_in_order(&n.left, callback);
+            callback(&n.key);
+            self.go_walk_in_order(&n.right, callback);
+        }
+    }
+
+    fn create_node(key: T) -> BareTree<T> {
+        Rc::new(RefCell::new(Node {
+            key,
+            ..Default::default() 
+        }))
+    }
+
+    fn to_node(node: BareTree<T>) -> Tree<T> {
+        Some(node)
+    }
+
+    fn find_parent(current: Tree<T>, new_node: BareTree<T>) -> BareTree<T> {
+        let mut parent = Default::default();
+        let mut current = current.clone();
+        while let Some(ref node) = current.clone() {
+            parent = node.clone();
+            if new_node < node.clone() {
+                current = node.borrow().left.clone();
+            } else {
+                current = node.borrow().right.clone();
+            }
+        }
+        parent.clone()
     }
 
     fn fixup(&mut self, inserted: BareTree<T>) {
@@ -195,8 +208,9 @@ impl<T: Default + PartialEq + PartialOrd + Copy + Clone> RedBlackTree<T> {
     ) -> BareTree<T> {
         let uncle = Self::find_uncle(current.clone(), child);
         let mut current = current.clone();
-        match uncle.borrow().color {
-            Color::Red => {
+
+        if let Some(uncle) = uncle {
+            if Self::uncle_is_red(uncle.clone()) {
                 parent.borrow_mut().color = Color::Black;
                 uncle.borrow_mut().color = Color::Black;
                 parent.borrow()
@@ -204,8 +218,7 @@ impl<T: Default + PartialEq + PartialOrd + Copy + Clone> RedBlackTree<T> {
                     .color = Color::Red;
                 current = parent.borrow()
                     .parent.as_ref().unwrap().clone();
-            }
-            _ => {
+            } else {
                 let rotate_child = !child.to_owned();
                 if Self::is_child(current.clone(), child) {
                     current = parent.clone();
@@ -220,17 +233,39 @@ impl<T: Default + PartialEq + PartialOrd + Copy + Clone> RedBlackTree<T> {
                 grandparent.borrow_mut().color = Color::Red;
                 self.rotate(grandparent, rotations.1, &rotate_child);
             }
-        }
-        current.clone()
+        } else {
+            current = self.root.as_ref().unwrap().clone()
+        } 
+        current
     } 
 
-    fn find_uncle(node: BareTree<T>, child: &Child) -> BareTree<T> {
-        let grand_parent = node.borrow()
-            .parent.as_ref().unwrap().borrow()
-            .parent.as_ref().unwrap().clone();
-        match child {
-            Child::Right => grand_parent.borrow().right.as_ref().unwrap().clone(),
-            Child::Left => grand_parent.borrow().left.as_ref().unwrap().clone(),
+    fn find_uncle(node: BareTree<T>, child: &Child) -> Tree<T> {
+        let grand_parent = match node.borrow().parent {
+            Some(ref p) => {
+                match p.borrow().parent {
+                    Some(ref pp) => Self::to_node(pp.clone()),
+                    None => None,
+                }
+            },
+            None => None,
+        };
+        if grand_parent.is_none() {
+            return None;
+        }
+        let uncle = match child {
+            Child::Right => grand_parent.unwrap().borrow().right.clone(),
+            Child::Left => grand_parent.unwrap().borrow().left.clone(),
+        };
+        match uncle {
+            Some(ref uncle) => Some(uncle.clone()),
+            None => None,
+        }
+    }
+
+    fn uncle_is_red(uncle: BareTree<T>) -> bool {
+        match uncle.borrow().color {
+            Color::Red => true,
+            _ => false, 
         }
     }
 
