@@ -211,7 +211,7 @@ impl<T: Default + PartialEq + PartialOrd + Copy + Clone> RedBlackTree<T> {
         let uncle = Self::find_uncle(current.clone(), child);
         let mut current = current.clone();
 
-        if let Some(uncle) = uncle {
+        if let Some(uncle) = uncle.clone() {
             let uncle_is_red = Self::uncle_is_red(uncle.clone());
             if uncle_is_red {
                 parent.borrow_mut().color = Color::Black;
@@ -310,26 +310,26 @@ impl<T: Default + PartialEq + PartialOrd + Copy + Clone> RedBlackTree<T> {
             }
         };
 
-        if let Some(ref npc) = new_parent_child {
+        if let Some(npc) = new_parent_child.clone() {
             npc.borrow_mut().parent = Self::to_node(node.clone());
         } 
-        if let Some(ref np) = new_parent {
+        if let Some(np) = new_parent.clone() {
             np.borrow_mut().parent = node.borrow().parent.clone();
         }
 
-        match node_parent {
+        match node_parent.clone() {
             None => self.root = new_parent.clone(),
-            Some(ref node_parent) => {
+            Some(node_parent) => {
                 match child {
                     Child::Left => {
                         node_parent.borrow_mut().left = new_parent.clone();
-                        if let Some(ref np) = new_parent {
+                        if let Some(np) = new_parent.clone() {
                             np.borrow_mut().left = Self::to_node(node.clone());
                         }
                     }
                     Child::Right => {
                         node_parent.borrow_mut().right = new_parent.clone();
-                        if let Some(ref np) = new_parent {
+                        if let Some(np) = new_parent.clone() {
                             np.borrow_mut().right = Self::to_node(node.clone());
                         }
                     }
