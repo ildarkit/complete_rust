@@ -4,6 +4,11 @@ mod rb_tree;
 mod tests {
     use super::rb_tree::*;
     use rand::prelude::*;
+    use log::debug;
+
+    fn init_logger() {
+        let _ = env_logger::builder().is_test(true).try_init();
+    }
 
     #[test]
     fn not_found_test() {
@@ -38,22 +43,29 @@ mod tests {
             rb_tree.insert(i);
             values.push(i);
         }
-        rb_tree.walk_in_order(|v| result.push(*v));
+        rb_tree.walk_in_order(|node| result.push(node.key));
         assert_eq!(values, result);
     }
 
     #[test]
     fn walk_random_values_test() {
+        init_logger();
         let mut rb_tree = RedBlackTree::new();
-        let mut rng = thread_rng();
-        let mut values: Vec<i32> = (1..=100).collect();
-        let mut result: Vec<i32> = Vec::with_capacity(100);
+        // let mut rng = thread_rng();
+        // let mut values: Vec<i32> = (1..=100).collect();
+        let values = vec![5, 1, 6, 3, 7, 4, 2];
+        let mut result: Vec<i32> = Vec::with_capacity(7);
 
-        values.shuffle(&mut rng);
+        // values.shuffle(&mut rng);
+        debug!("Inserting values into rbtree...");
         for i in &values {
             rb_tree.insert(*i);
         }
-        rb_tree.walk_in_order(|v| result.push(*v));
+        debug!("Walking rbtree...");
+        rb_tree.walk_in_order(|node| {
+            result.push(node.key);
+            debug!("\n {:#?}", node);
+        });
         assert_eq!(values, result);
     }
 }

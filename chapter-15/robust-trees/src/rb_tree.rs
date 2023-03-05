@@ -1,7 +1,9 @@
+use std::fmt;
 use std::ops::Not;
 use std::cmp::Ordering;
-use std::cell::RefCell;
+use std::cell::{Ref, RefCell};
 use std::rc::Rc;
+use log::debug;
 
 pub type BareTree<T> = Rc<RefCell<Node<T>>>;
 pub type Tree<T> = Option<BareTree<T>>;
@@ -36,7 +38,7 @@ pub enum Color {
 }
 
 #[derive(Default)]
-pub struct Node<T: Copy + Clone> {
+pub struct Node<T: Copy + Clone + fmt::Debug> {
     pub color: Color,
     pub key: T,
     parent: Tree<T>,
@@ -44,7 +46,34 @@ pub struct Node<T: Copy + Clone> {
     right: Tree<T>,
 }
 
-impl<T: Default + Copy + Clone> Node<T> {
+impl<T> fmt::Debug for Node<T> 
+    where
+        T: Copy + Clone + fmt::Debug
+{
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let parent = repr(self.parent.clone());
+        let left = repr(self.left.clone());
+        let right = repr(self.right.clone());
+        f.debug_struct("Node")
+            .field("key", &self.key)
+            .field("color", &self.color)
+            .field("parent", &parent)
+            .field("left", &left)
+            .field("right", &right)
+            .finish()
+    } 
+}
+
+fn repr<T: Copy + Clone + fmt::Debug>(node: Tree<T>) -> Option<(T, Color)> {
+    if let Some(n) = node {
+        Some((n.borrow().key, n.borrow().color))
+    } else { None }
+}
+
+impl<T> Node<T> 
+    where
+        T: Default + Copy + Clone + fmt::Debug
+{
     fn default_from(&self) -> Self {
         Self {
             color: self.color,
@@ -54,25 +83,34 @@ impl<T: Default + Copy + Clone> Node<T> {
     }
 }
 
-impl<T: PartialEq + Copy + Clone> PartialEq for Node<T> {
+impl<T> PartialEq for Node<T> 
+    where 
+        T: PartialEq + Copy + Clone + fmt::Debug
+{
     fn eq(&self, other: &Node<T>) -> bool {
         self.key == other.key
     }
 }
 
-impl<T: PartialOrd + Copy + Clone> PartialOrd for Node<T> {
+impl<T> PartialOrd for Node<T> 
+    where
+        T: PartialOrd + Copy + Clone + fmt::Debug
+{
     fn partial_cmp(&self, other: &Node<T>) -> Option<Ordering> {
         self.key.partial_cmp(&other.key)
     }
 }
 
 #[derive(Default)]
-pub struct RedBlackTree<T: Copy + Clone> {
+pub struct RedBlackTree<T: Copy + Clone + fmt::Debug> {
     root: Tree<T>,
     pub length: u64,
 }
 
-impl<T: Default + PartialEq + PartialOrd + Copy + Clone> RedBlackTree<T> {
+impl<T> RedBlackTree<T> 
+    where 
+        T: Default + PartialEq + PartialOrd + Copy + Clone + fmt::Debug
+{
     pub fn new() -> Self {
         Self { ..Default::default() }
     } 
@@ -101,7 +139,7 @@ impl<T: Default + PartialEq + PartialOrd + Copy + Clone> RedBlackTree<T> {
                 parent.borrow_mut().right = new_node.clone();
             }
         }
-
+        debug!("Inserted node:\n {:#?}", new_node.as_ref().unwrap().borrow());
         self.fixup(new_node.clone());
     }
 
@@ -124,15 +162,19 @@ impl<T: Default + PartialEq + PartialOrd + Copy + Clone> RedBlackTree<T> {
         None
     }
 
-    pub fn walk_in_order(&self, mut callback: impl FnMut(&T) -> ()) {
+    pub fn walk_in_order(&self,
+        mut callback: impl FnMut(&Ref<'_, Node<T>>) -> ())
+    {
         self.go_walk_in_order(&self.root, &mut callback);
     }
 
-    fn go_walk_in_order(&self, node: &Tree<T>, callback: &mut impl FnMut(&T) -> ()) {
+    fn go_walk_in_order(&self, node: &Tree<T>,
+        callback: &mut impl FnMut(&Ref<'_, Node<T>>) -> ())
+    {
         if let Some(n) = node {
             let n = n.borrow();
             self.go_walk_in_order(&n.left, callback);
-            callback(&n.key);
+            callback(&n);
             self.go_walk_in_order(&n.right, callback);
         }
     }
