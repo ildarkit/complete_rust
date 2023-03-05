@@ -138,7 +138,7 @@ impl<T> RedBlackTree<T>
         while let Some(ref node) = current.clone() {
             let node = node.clone();
             if node == value.clone() {
-                callback(Some(&node.borrow()));
+                return callback(Some(&node.borrow()));
             }
             if value.clone() <= node {
                 current = node.borrow().left.clone();
