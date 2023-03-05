@@ -80,24 +80,25 @@ impl<T: Default + PartialEq + PartialOrd + Copy + Clone> RedBlackTree<T> {
     pub fn insert(&mut self, value: T) {
         self.length += 1;
         let mut parent: BareTree<T> = Default::default();
-        let new_node = Self::create_node(value);
+        let new_node = Self::to_node(Self::create_node(value));
 
         self.root = if let Some(root) = self.root.take() {
             parent = Self::find_parent(
                 Some(root.clone()),
-                new_node.clone()
+                new_node.as_ref().unwrap().clone()
             );
             Self::to_node(root)
         } else { None };
         
         if self.root.is_none() {
-            self.root = Self::to_node(new_node.clone());
+            self.root = new_node.clone();
         } else {
-            new_node.borrow_mut().parent = Self::to_node(parent.clone());
-            if new_node.clone() < parent.clone() {
-                parent.borrow_mut().left = Self::to_node(new_node.clone());
+            new_node.as_ref().unwrap().borrow_mut()
+                .parent = Self::to_node(parent.clone());
+            if new_node.as_ref().unwrap().clone() < parent.clone() {
+                parent.borrow_mut().left = new_node.clone();
             } else {
-                parent.borrow_mut().right = Self::to_node(new_node.clone());
+                parent.borrow_mut().right = new_node.clone();
             }
         }
 
@@ -161,11 +162,15 @@ impl<T: Default + PartialEq + PartialOrd + Copy + Clone> RedBlackTree<T> {
         parent.clone()
     }
 
-    fn fixup(&mut self, inserted: BareTree<T>) {
+    fn fixup(&mut self, inserted: Tree<T>) {
         let mut current = inserted.clone();
         let mut rotations;
-        while let Some(ref parent) = current.clone().borrow().parent {
-            let color = parent.borrow().color;
+        while let Some(current) = current.clone() {
+            let color = if let Some(parent) = current.borrow().parent.clone() {
+                parent.borrow().color
+            } else {
+                break;
+            };
             match color {
                 Color::Red => {
                     let child = Self::current_is_child(current.clone());
@@ -177,7 +182,7 @@ impl<T: Default + PartialEq + PartialOrd + Copy + Clone> RedBlackTree<T> {
                             rotations = (Rotation::Right, Rotation::Left);
                         },
                     }
-                    current = self.fix_subtree(parent.clone(), current.clone(),
+                    current = self.fix_subtree(current.clone(),
                         &!child, rotations);
                 },
                 Color::Black => break,
@@ -203,7 +208,6 @@ impl<T: Default + PartialEq + PartialOrd + Copy + Clone> RedBlackTree<T> {
 
     fn fix_subtree(
         &mut self,
-        parent: BareTree<T>,
         current: BareTree<T>,
         child: &Child,
         rotations: (Rotation, Rotation)
@@ -212,6 +216,7 @@ impl<T: Default + PartialEq + PartialOrd + Copy + Clone> RedBlackTree<T> {
         let mut current = current.clone();
 
         if let Some(uncle) = uncle.clone() {
+            let parent = current.borrow().parent.as_ref().unwrap().clone();
             let uncle_is_red = Self::uncle_is_red(uncle.clone());
             if uncle_is_red {
                 parent.borrow_mut().color = Color::Black;
