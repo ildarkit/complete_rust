@@ -70,19 +70,6 @@ fn repr<T: Copy + Clone + fmt::Debug>(node: Tree<T>) -> Option<(T, Color)> {
     } else { None }
 }
 
-impl<T> Node<T> 
-    where
-        T: Default + Copy + Clone + fmt::Debug
-{
-    fn default_from(&self) -> Self {
-        Self {
-            color: self.color,
-            key: self.key,
-            ..Default::default()
-        }
-    }
-}
-
 impl<T> PartialEq for Node<T> 
     where 
         T: PartialEq + Copy + Clone + fmt::Debug
@@ -143,23 +130,23 @@ impl<T> RedBlackTree<T>
         self.fixup(new_node.clone());
     }
 
-    pub fn find(&self, value: T) -> Option<Node<T>> {
+    pub fn find(&self, value: T,
+        mut callback: impl FnMut(Option<&Ref<Node<T>>>) -> ())
+    {
         let value = Self::create_node(value);
         let mut current = self.root.clone();
-        while let Some(node) = current {
-            if node.clone() == value.clone() {
-                let inner_node = node.replace(Default::default());
-                let res = Some(inner_node.default_from());
-                node.replace(inner_node);
-                return res;
+        while let Some(ref node) = current.clone() {
+            let node = node.clone();
+            if node == value.clone() {
+                callback(Some(&node.borrow()));
             }
-            if value <= node.clone() {
+            if value.clone() <= node {
                 current = node.borrow().left.clone();
             } else {
                 current = node.borrow().right.clone();
             }
         }
-        None
+        callback(None);
     }
 
     pub fn walk_in_order(&self,

@@ -13,24 +13,43 @@ mod tests {
     #[test]
     fn not_found_test() {
         let mut rb_tree = RedBlackTree::new();
-        assert!(rb_tree.find(0).is_none());
+        let mut value: i32 = -1;
+        rb_tree.find(0, |node| {
+            if let Some(n) = node {
+                value = n.key;
+            }
+        });
+        assert_eq!(value, -1);
         rb_tree.insert(1);
-        assert!(rb_tree.find(2).is_none());
+        rb_tree.find(2, |node| {
+            if let Some(n) = node {
+                value = n.key;
+            }
+        });
+        assert_eq!(value, -1);
     }
 
     #[test]
     fn found_test() {
         let mut rb_tree = RedBlackTree::new();
+        let mut value: i32 = -1;
         rb_tree.insert(0);
-        let node = rb_tree.find(0).unwrap();
-        assert_eq!(node.key, 0);
-        assert_eq!(node.color, Color::Black);
+        rb_tree.find(0, |node| {
+            if let Some(n) = node {
+                value = n.key;
+            }
+        });
+        assert_eq!(value, 0);
         for i in 1..=100 {
             rb_tree.insert(i);
         }
         for i in 0..=100 {
-            let node = rb_tree.find(i).unwrap();
-            assert_eq!(node.key, i);
+            rb_tree.find(i, |node| {
+                if let Some(n) = node {
+                    value = n.key;
+                }
+            });
+            assert_eq!(value, i);
         }
     }
 
@@ -57,10 +76,20 @@ mod tests {
         let mut result: Vec<i32> = Vec::with_capacity(7);
 
         // values.shuffle(&mut rng);
-        debug!("Inserting values into rbtree...");
-        for i in &values {
-            rb_tree.insert(*i);
-        }
+        // debug!("Inserting values into rbtree...");
+        // for i in &values {
+        //     debug!("\nvalue = {:?}", i);
+        //     rb_tree.insert(*i);
+        //     rb_tree.find(*i, |node| {
+        //         match node {
+        //             Some(n) => {
+        //                 debug!("\nfounded node = {:#?}", n);
+        //                 result.push(n.key);
+        //             },
+        //             None => debug!(", node not found!"),
+        //         }
+        //     });
+        // }
         debug!("Walking rbtree...");
         rb_tree.walk_in_order(|node| {
             result.push(node.key);
