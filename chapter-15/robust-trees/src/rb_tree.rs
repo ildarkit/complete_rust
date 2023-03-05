@@ -243,10 +243,10 @@ impl<T: Default + PartialEq + PartialOrd + Copy + Clone> RedBlackTree<T> {
     } 
 
     fn find_uncle(node: BareTree<T>, child: &Child) -> Tree<T> {
-        let grand_parent = match node.borrow().parent {
-            Some(ref p) => {
-                match p.borrow().parent {
-                    Some(ref pp) => Self::to_node(pp.clone()),
+        let grand_parent = match node.borrow().parent.clone() {
+            Some(p) => {
+                match p.borrow().parent.clone() {
+                    Some(pp) => Self::to_node(pp.clone()),
                     None => None,
                 }
             },
@@ -255,13 +255,9 @@ impl<T: Default + PartialEq + PartialOrd + Copy + Clone> RedBlackTree<T> {
         if grand_parent.is_none() {
             return None;
         }
-        let uncle = match child {
+        match child {
             Child::Right => grand_parent.unwrap().borrow().right.clone(),
             Child::Left => grand_parent.unwrap().borrow().left.clone(),
-        };
-        match uncle {
-            Some(ref uncle) => Some(uncle.clone()),
-            None => None,
         }
     }
 
