@@ -158,11 +158,11 @@ impl<T> RedBlackTree<T>
     fn go_walk_in_order(&self, node: &Tree<T>,
         callback: &mut impl FnMut(&Ref<'_, Node<T>>) -> ())
     {
-        if let Some(n) = node {
-            let n = n.borrow();
-            self.go_walk_in_order(&n.left, callback);
-            callback(&n);
-            self.go_walk_in_order(&n.right, callback);
+        if let Some(ref n) = node.clone() {
+            let n = n.clone();
+            self.go_walk_in_order(&n.borrow().left.clone(), callback);
+            callback(&n.borrow());
+            self.go_walk_in_order(&n.borrow().right.clone(), callback);
         }
     }
 
@@ -182,7 +182,7 @@ impl<T> RedBlackTree<T>
         let mut current = current.clone();
         while let Some(ref node) = current.clone() {
             parent = node.clone();
-            if new_node < node.clone() {
+            if new_node.clone() < node.clone() {
                 current = node.borrow().left.clone();
             } else {
                 current = node.borrow().right.clone();
@@ -241,7 +241,7 @@ impl<T> RedBlackTree<T>
         child: &Child,
         rotations: (Rotation, Rotation)
     ) -> Tree<T> {
-        let uncle = Self::find_uncle(current.clone(), child);
+        let uncle = Self::find_uncle(current.clone());
         let mut current = current.clone();
 
         if let Some(uncle) = uncle.clone() {
@@ -277,8 +277,9 @@ impl<T> RedBlackTree<T>
         current
     } 
 
-    fn find_uncle(node: Tree<T>, child: &Child) -> Tree<T> {
-        let grand_parent = match node.as_ref().unwrap().borrow().parent.clone() {
+    fn find_uncle(node: Tree<T>) -> Tree<T> {
+        let parent = node.as_ref().unwrap().borrow().parent.clone();
+        let grand_parent = match parent.clone() {
             Some(p) => {
                 match p.borrow().parent.clone() {
                     Some(pp) => Self::to_node(pp.clone()),
@@ -290,9 +291,9 @@ impl<T> RedBlackTree<T>
         if grand_parent.is_none() {
             return None;
         }
-        match child {
-            Child::Right => grand_parent.unwrap().borrow().right.clone(),
-            Child::Left => grand_parent.unwrap().borrow().left.clone(),
+        match !Self::current_is_child(parent.as_ref().unwrap().clone()) {
+            Child::Right => grand_parent.as_ref().unwrap().borrow().right.clone(),
+            Child::Left => grand_parent.as_ref().unwrap().borrow().left.clone(),
         }
     }
 
