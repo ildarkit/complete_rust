@@ -193,7 +193,6 @@ impl<T> RedBlackTree<T>
 
     fn fixup(&mut self, inserted: Tree<T>) {
         let mut current = inserted.clone();
-        let mut rotations;
         while let Some(node) = current.clone() {
             let color = if let Some(parent) = node.borrow().parent.clone() {
                 parent.borrow().color
@@ -202,17 +201,9 @@ impl<T> RedBlackTree<T>
             };
             match color {
                 Color::Red => {
-                    let child = Self::current_is_child(node.clone());
-                    match child.clone() {
-                        Child::Left => {
-                            rotations = (Rotation::Left, Rotation::Right);
-                        },
-                        Child::Right => {
-                            rotations = (Rotation::Right, Rotation::Left);
-                        },
-                    }
-                    current = self.fix_subtree(Self::to_node(node.clone()),
-                        &!child, rotations);
+                    let child = Self::current_is_child(node.clone()); 
+                    current = self
+                        .fix_subtree(Self::to_node(node.clone()), child);
                 },
                 Color::Black => break,
             }
@@ -235,44 +226,38 @@ impl<T> RedBlackTree<T>
         }
     }
 
-    fn fix_subtree(
-        &mut self,
-        current: Tree<T>,
-        child: &Child,
-        rotations: (Rotation, Rotation)
-    ) -> Tree<T> {
+    fn fix_subtree(&mut self, current: Tree<T>, child: Child)
+        -> Tree<T>
+    {
         let uncle = Self::find_uncle(current.clone());
         let mut current = current.clone();
 
-        if let Some(uncle) = uncle.clone() {
-            let parent = current.as_ref().unwrap().borrow()
-                .parent.as_ref().unwrap().clone();
-            let uncle_is_red = Self::uncle_is_red(uncle.clone());
-            if uncle_is_red {
-                parent.borrow_mut().color = Color::Black;
-                uncle.borrow_mut().color = Color::Black;
-                parent.borrow()
-                    .parent.as_ref().unwrap().borrow_mut()
-                    .color = Color::Red;
-                current = parent.borrow()
-                    .parent.clone();
-            } else {
-                let rotate_child = !child.to_owned();
-                if Self::is_child(current.clone(), child) {
-                    current = Self::to_node(parent.clone());
-                    self.rotate(current.clone(), rotations.0, &rotate_child);
-                }
-                current.as_ref().unwrap().borrow()
-                    .parent.as_ref().unwrap().borrow_mut()
-                    .color = Color::Black;
-                let grandparent = current.as_ref().unwrap().borrow()
-                    .parent.as_ref().unwrap().borrow()
-                    .parent.clone();
-                grandparent.as_ref().unwrap().borrow_mut().color = Color::Red;
-                self.rotate(grandparent, rotations.1, &rotate_child);
+        let mut parent = current.as_ref().unwrap().borrow()
+            .parent.as_ref().unwrap().clone();
+        let uncle_is_red = Self::uncle_is_red(uncle.clone());
+        if uncle_is_red {
+            parent.borrow_mut().color = Color::Black;
+            uncle.as_ref().unwrap().borrow_mut().color = Color::Black;
+            parent.borrow()
+                .parent.as_ref().unwrap().borrow_mut()
+                .color = Color::Red;
+            current = parent.borrow()
+                .parent.clone();
+        } else { 
+            if child == Child::Right {
+                current = Self::to_node(parent.clone());
+                self.rotate(current.clone(), Rotation::Left);
+                parent = current.as_ref().unwrap().borrow()
+                    .parent.as_ref().unwrap().clone();
             }
-        } else {
-            current = self.root.clone()
+            parent.borrow_mut()
+                .color = Color::Black;
+            let grandparent = parent.borrow()
+                .parent.clone();
+            if grandparent.is_some() {
+                grandparent.as_ref().unwrap().borrow_mut().color = Color::Red;
+                self.rotate(grandparent, Rotation::Right);
+            }
         } 
         current
     } 
@@ -297,28 +282,16 @@ impl<T> RedBlackTree<T>
         }
     }
 
-    fn uncle_is_red(uncle: BareTree<T>) -> bool {
-        match uncle.borrow().color {
-            Color::Red => true,
-            _ => false, 
+    fn uncle_is_red(uncle: Tree<T>) -> bool {
+        match uncle {
+            Some(n) => n.borrow().color == Color::Red,
+            None => false, 
         }
-    }
+    } 
 
-    fn is_child(node: Tree<T>, child: &Child) -> bool {
-        let parent = node.as_ref().unwrap().borrow()
-            .parent.as_ref().unwrap().clone();
-        let child_node = match child {
-            Child::Right => parent.borrow().right.clone(),
-            Child::Left => parent.borrow().left.clone(),
-        };
-        match child_node {
-            Some(n) => n == node.as_ref().unwrap().clone(),
-            None => false,
-        }
-    }
-
-    fn rotate(&mut self, node: Tree<T>, rotation: Rotation, child: &Child) {
+    fn rotate(&mut self, node: Tree<T>, rotation: Rotation) {
         let node = node.unwrap();
+        debug!("\nx = {:#?}", node);
         let (node_parent, new_parent, new_parent_child) = match rotation {
             Rotation::Left => {
                 let new_parent = node.borrow().right.clone();
@@ -343,18 +316,22 @@ impl<T> RedBlackTree<T>
                     new_parent_child)
             }
         };
+        debug!("\nx.p = {:#?}", node_parent);
+        debug!("\ny(x.r) = {:#?}", new_parent);
+        debug!("\ny.l(x.r.l) = {:#?}", new_parent_child);
 
         if let Some(npc) = new_parent_child.clone() {
             npc.borrow_mut().parent = Self::to_node(node.clone());
         } 
         if let Some(np) = new_parent.clone() {
             np.borrow_mut().parent = node.borrow().parent.clone();
+            debug!("\ny.p = x.p: {:#?}", np);
         }
 
         match node_parent.clone() {
             None => self.root = new_parent.clone(),
             Some(node_parent) => {
-                match child {
+                match Self::current_is_child(node.clone()) {
                     Child::Left => {
                         node_parent.borrow_mut().left = new_parent.clone();
                         if let Some(np) = new_parent.clone() {
