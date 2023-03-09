@@ -1,4 +1,4 @@
-mod rb_tree;
+pub mod rb_tree;
 
 #[cfg(test)]
 mod tests {
