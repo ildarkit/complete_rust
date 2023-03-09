@@ -69,32 +69,24 @@ mod tests {
     #[test]
     fn walk_random_values_test() {
         init_logger();
+        const VEC_LEN: i32 = 20000;
         let mut rb_tree = RedBlackTree::new();
-        // let mut rng = thread_rng();
-        // let mut values: Vec<i32> = (1..=100).collect();
-        let values = vec![5, 1, 6, 3, 7, 4, 2];
-        let mut result: Vec<i32> = Vec::with_capacity(7);
+        let mut rng = thread_rng();
+        let mut values: Vec<i32> = (-(VEC_LEN / 2)..=VEC_LEN / 2).collect();
+        let sorted_values: Vec<i32> = values.clone();
+        let mut result: Vec<i32> = Vec::with_capacity(VEC_LEN.try_into().unwrap());
 
-        // values.shuffle(&mut rng);
-        // debug!("Inserting values into rbtree...");
-        // for i in &values {
-        //     debug!("\nvalue = {:?}", i);
-        //     rb_tree.insert(*i);
-        //     rb_tree.find(*i, |node| {
-        //         match node {
-        //             Some(n) => {
-        //                 debug!("\nfounded node = {:#?}", n);
-        //                 result.push(n.key);
-        //             },
-        //             None => debug!(", node not found!"),
-        //         }
-        //     });
-        // }
+        values.shuffle(&mut rng);
+        debug!("Inserting values into rbtree...");
+        for i in values.iter() {
+            debug!("\nvalue = {:?}", i);
+            rb_tree.insert(*i); 
+        }
         debug!("Walking rbtree...");
         rb_tree.walk_in_order(|node| {
             result.push(node.key);
             debug!("\n {:#?}", node);
         });
-        assert_eq!(values, result);
+        assert_eq!(sorted_values, result);
     }
 }
