@@ -225,7 +225,7 @@ impl<T> RedBlackTree<T>
                     false => Some(Child::Right),
                 }
             },
-            None => return None,
+            None => None,
         }
     }
 
