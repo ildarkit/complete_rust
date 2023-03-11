@@ -127,7 +127,7 @@ impl<T> RedBlackTree<T>
             }
         }
         debug!("Inserted node:\n {:#?}", new_node.as_ref().unwrap().borrow());
-        self.fixup(new_node.clone());
+        self.insert_fixup(new_node.clone());
         debug!("Fixed node:\n {:#?}", new_node.as_ref().unwrap().borrow());
     }
 
@@ -192,7 +192,7 @@ impl<T> RedBlackTree<T>
         parent.clone()
     }
 
-    fn fixup(&mut self, inserted: Tree<T>) {
+    fn insert_fixup(&mut self, inserted: Tree<T>) {
         let mut current = inserted.clone();
         while let Some(node) = current.clone() {
             let color = if let Some(parent) = node.borrow().parent.clone() {
@@ -204,7 +204,7 @@ impl<T> RedBlackTree<T>
                 Color::Red => {
                     let child = Self::node_is_child(node.clone()); 
                     current = self
-                        .fix_subtree(Self::to_node(node.clone()), &child.unwrap());
+                        .insert_fixup_subtree(Self::to_node(node.clone()), &child.unwrap());
                 },
                 Color::Black => break,
             }
@@ -229,7 +229,7 @@ impl<T> RedBlackTree<T>
         }
     }
 
-    fn fix_subtree(&mut self, current: Tree<T>, child: &Child)
+    fn insert_fixup_subtree(&mut self, current: Tree<T>, child: &Child)
         -> Tree<T>
     {
         let uncle = Self::find_uncle(current.clone());
