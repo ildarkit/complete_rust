@@ -357,5 +357,160 @@ impl<T> RedBlackTree<T>
         debug!("\nnode = {:#?}", node);
         debug!("\nnew_parent_child(child_child) = {:#?}", new_parent_child);
         debug!("\nend rotate fn");
-    } 
+    }
+
+    fn transplant(&self, u: BareTree<T>, v: BareTree<T>) {
+        let parent = u.borrow().parent.clone();
+        match parent {
+            None => self.root = Self::to_node(v),
+            Some(p) if p.borrow().left.is_some() => {
+                if p.borrow().left.as_ref().unwrap().clone() == u.clone() {
+                    p.borrow_mut().left = Self::to_node(u.clone());
+                }
+            },
+            Some(p) if p.borrow().right.is_some() => {
+                if p.borrow().right.as_ref().unwrap().clone() == u.clone() {
+                    p.borrow_mut().right = Self::to_node(u.clone());
+                }
+            },
+            _ => { unreachable!() }
+        }
+        v.borrow_mut().parent = u.borrow().parent;
+    }
+
+    pub fn delete(&mut self, value: T) -> bool {
+        let mut child: BareTree<T>;
+        let mut node; 
+        let mut node_color = node.borrow().color;
+
+        match Self::is_one_child(node.clone()) {
+            Some(n) => {
+                child = n.clone(); 
+                self.transplant(node.clone(), child.clone());
+            }
+            None => {
+                let min_node = Self::tree_minimum(node.borrow().right.clone());
+                node_color = min_node.borrow().color;
+                child = min_node.borrow().right.as_ref().unwrap().clone();
+                if min_node.borrow().parent.as_ref().unwrap().clone() == node.clone() {
+                    child.borrow_mut().parent = Self::to_node(min_node.clone());
+                } else {
+                    self.transplant(
+                        min_node.clone(),
+                        min_node.borrow()
+                            .right.as_ref().unwrap().clone()
+                    );
+                    min_node.borrow_mut().right = node.borrow().right.clone();
+                    min_node.borrow()
+                        .right.as_ref().unwrap().borrow_mut()
+                        .parent = Self::to_node(min_node.clone());
+                }
+                self.transplant(node.clone(), min_node.clone());
+                min_node.borrow_mut().left = node.borrow().left.clone();
+                min_node.borrow()
+                    .left.as_ref().unwrap().borrow_mut()
+                    .parent = Self::to_node(min_node.clone());
+                min_node.borrow_mut().color = node.borrow().color;
+            }
+        }
+        if node_color == Color::Black {
+            self.delete_fixup(Self::to_node(child.clone()));
+        }
+        true
+    }
+
+    fn is_one_child(node: BareTree<T>) -> Tree<T> {
+        if node.borrow().left.is_none() {
+            node.borrow().right.clone()
+        } else if node.borrow().right.is_none() {
+            node.borrow().left.clone()
+        } else { None }
+    }
+
+    fn tree_minimum(node: Tree<T>) -> BareTree<T> {
+        let mut node = node.clone();
+        let mut result: BareTree<T> = Default::default();
+        while let Some(n) = node {
+            result = n.clone();
+            node = n.borrow().left.clone();
+        }
+        result
+    }
+
+    fn is_color(node: BareTree<T>, color: Color) -> bool {
+        node.borrow().color == color
+    }
+
+    fn delete_fixup(&mut self, node: Tree<T>) {
+        let mut node = node.clone();
+        while let Some(inner_node) = node.clone() {
+            if inner_node.clone() != self.root.as_ref().unwrap().clone()
+                && Self::is_color(inner_node.clone(), Color::Black)
+            {
+                let child = Self::node_is_child(inner_node.clone());
+                let parent_child = match child {
+                    Some(Child::Left) => {
+                        inner_node.borrow()
+                            .parent.as_ref().unwrap().borrow()
+                            .right.as_ref().unwrap().clone()
+                    },
+                    Some(Child::Right) => {
+                        inner_node.borrow()
+                            .parent.as_ref().unwrap().borrow()
+                            .left.as_ref().unwrap().clone()
+                    },
+                    None => { break },
+                };
+                node = self.delete_fixup_subtree(inner_node.clone(),
+                    parent_child.clone());
+            } else { break }
+        }
+        self.root.as_ref().unwrap().borrow_mut().color = Color::Black;
+    }
+
+    fn delete_fixup_subtree(&self,
+        node: BareTree<T>,
+        parent_child: BareTree<T>)
+        -> Tree<T>
+    {
+        let mut parent_child = parent_child.clone();
+        let parent_node = node.borrow().parent.as_ref().unwrap().clone();
+
+        if Self::is_color(parent_child, Color::Red) {
+            parent_child.borrow_mut().color = Color::Black;
+            parent_node.borrow_mut().color = Color::Red;
+            self.rotate(parent_node.clone(), &Rotation::Left);
+            parent_child = node.borrow().parent.as_ref().unwrap().clone();
+        }
+        if Self::is_color(
+            parent_child.borrow().left.as_ref().unwrap().clone(),
+            Color::Black) &&
+            Self::is_color(
+                parent_child.borrow().right.as_ref().unwrap().clone(),
+                Color::Black)
+        {
+            parent_child.borrow_mut().color = Color::Red;
+            node.borrow().parent.clone()
+        } else {
+            if Self::is_color(
+                parent_child.borrow()
+                    .right.as_ref().unwrap().clone(),
+                Color::Black)
+            {
+                parent_child.borrow()
+                    .left.as_ref().unwrap().borrow_mut().color = Color::Black;
+                parent_child.borrow_mut().color = Color::Red;
+                self.rotate(parent_child.clone(), &Rotation::Right);
+                parent_child = node.borrow()
+                    .parent.as_ref().unwrap().borrow()
+                    .right.as_ref().unwrap().clone();
+            }
+            parent_child.borrow_mut()
+                .color = node.borrow().parent.as_ref().unwrap().borrow().color;
+            node.borrow().parent.as_ref().unwrap().borrow_mut().color = Color::Black;
+            parent_child.borrow().right.as_ref().unwrap().borrow_mut().color = Color::Black;
+            self.rotate(node.borrow().parent.as_ref().unwrap().clone(), &Rotation::Left);
+            self.root.clone()
+        }
+    }
 }
