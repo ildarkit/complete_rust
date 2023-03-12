@@ -367,24 +367,32 @@ impl<T> RedBlackTree<T>
         debug!("\nend rotate fn");
     }
 
-    fn transplant(&mut self, u: BareTree<T>, v: BareTree<T>) {
-        let parent = u.borrow().parent.clone();
+    fn transplant(&mut self, delete_node: BareTree<T>, replacement_node: BareTree<T>) {
+        let parent = delete_node.borrow().parent.clone();
         match parent {
-            None => self.root = Self::to_node(v.clone()),
-            Some(p) if p.borrow().left.is_some() => {
-                if p.borrow().left.as_ref().unwrap().clone() == u.clone() {
-                    p.borrow_mut().left = Self::to_node(u.clone());
+            None => self.root = Self::to_node(replacement_node.clone()),
+            Some(p) => {
+               if Self::is_replaceable(p.borrow().left.clone(), delete_node.clone()) {
+                    p.borrow_mut().left = Self::to_node(replacement_node.clone());
+                } else
+                    if Self::is_replaceable(p.borrow().right.clone(), delete_node.clone())
+                {
+                    p.borrow_mut().right = Self::to_node(replacement_node.clone());
                 }
-            },
-            Some(p) if p.borrow().right.is_some() => {
-                if p.borrow().right.as_ref().unwrap().clone() == u.clone() {
-                    p.borrow_mut().right = Self::to_node(u.clone());
-                }
-            },
-            _ => { unreachable!() }
+            }
         }
-        v.borrow_mut().parent = u.borrow().parent.clone();
+        replacement_node.borrow_mut().parent = delete_node.borrow().parent.clone();
     }
+
+    fn is_replaceable(
+        replaceable: Tree<T>,
+        delete_node: BareTree<T>) -> bool
+    {
+        match replaceable.clone() {
+            Some(node) if node.clone() == delete_node.clone() => true,
+            Some(_) | None => false,
+        }
+    } 
 
     pub fn delete(&mut self, value: T) -> bool {
         let child: BareTree<T>;
