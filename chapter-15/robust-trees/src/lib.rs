@@ -4,7 +4,10 @@ pub mod rb_tree;
 mod tests {
     use super::rb_tree::*;
     use rand::prelude::*;
+    use rand::distributions::Uniform;
     use log::debug;
+
+    const VALUES_COUNT: i32 = 20000;
 
     fn init_logger() {
         let _ = env_logger::builder().is_test(true).try_init();
@@ -69,12 +72,11 @@ mod tests {
     #[test]
     fn walk_random_values_test() {
         init_logger();
-        const VEC_LEN: i32 = 20000;
         let mut rb_tree = RedBlackTree::new();
         let mut rng = thread_rng();
-        let mut values: Vec<i32> = (-(VEC_LEN / 2)..=VEC_LEN / 2).collect();
+        let mut values: Vec<i32> = (-(VALUES_COUNT / 2)..=VALUES_COUNT / 2).collect();
         let sorted_values: Vec<i32> = values.clone();
-        let mut result: Vec<i32> = Vec::with_capacity(VEC_LEN.try_into().unwrap());
+        let mut result: Vec<i32> = Vec::with_capacity(VALUES_COUNT.try_into().unwrap());
 
         values.shuffle(&mut rng);
         debug!("Inserting values into rbtree...");
@@ -88,6 +90,32 @@ mod tests {
             debug!("\n {:#?}", node);
         });
         assert_eq!(sorted_values, result);
+    }
+
+    #[test]
+    fn walk_random_values_in_range_test() {
+        init_logger();
+        let mut rng = thread_rng();
+        let mut rb_tree = RedBlackTree::new();
+        let val_rng = Uniform::new_inclusive(-(VALUES_COUNT / 2), VALUES_COUNT / 2);
+        let mut result: Vec<i32> = Vec::with_capacity(VALUES_COUNT.try_into().unwrap());
+        let values: Vec<i32> = val_rng
+            .sample_iter(&mut rng)
+            .take(VALUES_COUNT.try_into().unwrap())
+            .collect();
+        let mut expected = values.clone();
+        expected.sort();
+        debug!("inserting values...");
+        for i in values.iter() {
+            debug!("\nvalue = {:?}", i);
+            rb_tree.insert(*i);
+        }
+        debug!("Walking rbtree...");
+        rb_tree.walk_in_order(|node| {
+            result.push(node.key);
+            debug!("\n {:#?}", node);
+        });
+        assert_eq!(expected, result);
     }
 
     #[test]
