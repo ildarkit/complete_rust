@@ -89,4 +89,27 @@ mod tests {
         });
         assert_eq!(sorted_values, result);
     }
+
+    #[test]
+    fn delete_test() {
+        init_logger();
+        let mut rb_tree = RedBlackTree::new();
+        let values = vec![5, 1, 7, 3, 6, 2, 4];
+        let expected = vec![1, 3, 4, 5, 6, 7];
+        let mut result: Vec<i32> = Vec::with_capacity(6);
+
+        debug!("inserting values...");
+        for i in values.iter() {
+            debug!("\nvalue = {:?}", i);
+            rb_tree.insert(*i);
+        }
+        debug!("delete value...");
+        rb_tree.delete(2);
+        debug!("walking rbtree...");
+        rb_tree.walk_in_order(|node| {
+            result.push(node.key);
+            debug!("\n {:#?}", node);
+        });
+        assert_eq!(result, expected);
+    }
 }
