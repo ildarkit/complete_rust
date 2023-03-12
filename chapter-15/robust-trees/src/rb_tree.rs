@@ -132,14 +132,22 @@ impl<T> RedBlackTree<T>
     }
 
     pub fn find(&self, value: T,
-        mut callback: impl FnMut(Option<&Ref<Node<T>>>) -> ())
+        mut callback: impl FnMut(Option<Ref<Node<T>>>) -> ())
     {
+        let node = self.find_node(value);
+        let node = match node {
+            Some(ref n) => Some(n.borrow()),
+            None => None,
+        };
+        callback(node);
+    }
+
+    fn find_node(&self, value: T) -> Tree<T> {
         let value = Self::create_node(value);
         let mut current = self.root.clone();
-        while let Some(ref node) = current.clone() {
-            let node = node.clone();
-            if node == value.clone() {
-                return callback(Some(&node.borrow()));
+        while let Some(node) = current.clone() {
+            if node.clone() == value.clone() {
+                return Self::to_node(node.clone());
             }
             if value.clone() < node {
                 current = node.borrow().left.clone();
@@ -147,7 +155,7 @@ impl<T> RedBlackTree<T>
                 current = node.borrow().right.clone();
             }
         }
-        callback(None);
+        current
     }
 
     pub fn walk_in_order(&self,
@@ -359,10 +367,10 @@ impl<T> RedBlackTree<T>
         debug!("\nend rotate fn");
     }
 
-    fn transplant(&self, u: BareTree<T>, v: BareTree<T>) {
+    fn transplant(&mut self, u: BareTree<T>, v: BareTree<T>) {
         let parent = u.borrow().parent.clone();
         match parent {
-            None => self.root = Self::to_node(v),
+            None => self.root = Self::to_node(v.clone()),
             Some(p) if p.borrow().left.is_some() => {
                 if p.borrow().left.as_ref().unwrap().clone() == u.clone() {
                     p.borrow_mut().left = Self::to_node(u.clone());
@@ -375,12 +383,15 @@ impl<T> RedBlackTree<T>
             },
             _ => { unreachable!() }
         }
-        v.borrow_mut().parent = u.borrow().parent;
+        v.borrow_mut().parent = u.borrow().parent.clone();
     }
 
     pub fn delete(&mut self, value: T) -> bool {
-        let mut child: BareTree<T>;
-        let mut node; 
+        let child: BareTree<T>;
+        let node = match self.find_node(value) {
+            Some(node) => node.clone(),
+            None => return false,
+        };
         let mut node_color = node.borrow().color;
 
         match Self::is_one_child(node.clone()) {
@@ -468,7 +479,7 @@ impl<T> RedBlackTree<T>
         self.root.as_ref().unwrap().borrow_mut().color = Color::Black;
     }
 
-    fn delete_fixup_subtree(&self,
+    fn delete_fixup_subtree(&mut self,
         node: BareTree<T>,
         parent_child: BareTree<T>)
         -> Tree<T>
@@ -476,7 +487,7 @@ impl<T> RedBlackTree<T>
         let mut parent_child = parent_child.clone();
         let parent_node = node.borrow().parent.as_ref().unwrap().clone();
 
-        if Self::is_color(parent_child, Color::Red) {
+        if Self::is_color(parent_child.clone(), Color::Red) {
             parent_child.borrow_mut().color = Color::Black;
             parent_node.borrow_mut().color = Color::Red;
             self.rotate(parent_node.clone(), &Rotation::Left);
