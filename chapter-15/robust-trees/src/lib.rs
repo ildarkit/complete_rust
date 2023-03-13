@@ -171,4 +171,36 @@ mod tests {
         });
         assert_eq!(result, expected);
     }
+
+    #[test]
+    fn delete_random_test() {
+        init_logger();
+        let mut rb_tree = RedBlackTree::new();
+        let mut rng = thread_rng();
+        let values_range = Uniform::new_inclusive(-(VALUES_COUNT / 2), VALUES_COUNT / 2);
+        let mut result: Vec<i32> = Vec::with_capacity(VALUES_COUNT.try_into().unwrap());
+        let values: Vec<i32> = values_range
+            .sample_iter(&mut rng)
+            .take(VALUES_COUNT.try_into().unwrap())
+            .collect();
+        let remove_index = rng.gen_range(0..VALUES_COUNT) as usize;
+        let mut expected = values.clone();
+        expected.sort();
+        let deleted = expected.remove(remove_index);
+        debug!("deleted value = {:?}", deleted);
+
+        debug!("inserting values...");
+        for i in values.iter() {
+            debug!("\nvalue = {:?}", i);
+            rb_tree.insert(*i);
+        }
+        debug!("delete value from rbtree...");
+        rb_tree.delete(deleted);
+        debug!("walking rbtree...");
+        rb_tree.walk_in_order(|node| {
+            result.push(node.key);
+            debug!("\n {:#?}", node);
+        });
+        assert_eq!(result, expected, "{}", format!("values = {:?}", values));
+    }
 }
