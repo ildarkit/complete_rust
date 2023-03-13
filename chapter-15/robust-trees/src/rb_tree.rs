@@ -39,6 +39,7 @@ pub enum Color {
 
 #[derive(Default)]
 pub struct Node<T: Copy + Clone + fmt::Debug> {
+    id: u32,
     pub color: Color,
     pub key: T,
     parent: Tree<T>,
@@ -92,6 +93,7 @@ impl<T> PartialOrd for Node<T>
 pub struct RedBlackTree<T: Copy + Clone + fmt::Debug> {
     root: Tree<T>,
     pub length: u64,
+    id_node: u32,
 }
 
 impl<T> RedBlackTree<T> 
@@ -105,7 +107,7 @@ impl<T> RedBlackTree<T>
     pub fn insert(&mut self, value: T) {
         self.length += 1;
         let mut parent: BareTree<T> = Default::default();
-        let new_node = Self::to_node(Self::create_node(value));
+        let new_node = Self::to_node(self.create_node(value));
 
         self.root = if let Some(root) = self.root.take() {
             parent = Self::find_parent(
@@ -143,7 +145,7 @@ impl<T> RedBlackTree<T>
     }
 
     fn find_node(&self, value: T) -> Tree<T> {
-        let value = Self::create_node(value);
+        let value = Self::new_node(0, value);
         let mut current = self.root.clone();
         while let Some(node) = current.clone() {
             if node.clone() == value.clone() {
@@ -175,8 +177,14 @@ impl<T> RedBlackTree<T>
         }
     }
 
-    fn create_node(key: T) -> BareTree<T> {
+    fn create_node(&mut self, key: T) -> BareTree<T> {
+        self.id_node +=1;
+        Self::new_node(self.id_node, key) 
+    }
+
+    fn new_node(id: u32, key: T) -> BareTree<T> {
         Rc::new(RefCell::new(Node {
+            id,
             key,
             ..Default::default() 
         }))
@@ -191,7 +199,7 @@ impl<T> RedBlackTree<T>
         let mut current = current.clone();
         while let Some(ref node) = current.clone() {
             parent = node.clone();
-            if new_node.clone() <= node.clone() {
+            if new_node.clone() < node.clone() {
                 current = node.borrow().left.clone();
             } else {
                 current = node.borrow().right.clone();
@@ -223,9 +231,9 @@ impl<T> RedBlackTree<T>
     fn node_is_child(node: BareTree<T>) -> Option<Child> {
         let parent = node.borrow().parent.clone();
         match parent {
-            Some(ref p) => { 
+            Some(ref p) => {
                 let is_left = match p.borrow().left.clone() {
-                    Some(ref child) => child.clone() == node.clone(),
+                    Some(child) => child.borrow().id == node.borrow().id,
                     None => false,
                 };
                 match is_left {
