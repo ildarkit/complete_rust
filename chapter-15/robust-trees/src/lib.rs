@@ -70,7 +70,7 @@ mod tests {
     }
 
     #[test]
-    fn walk_random_values_test() {
+    fn walk_random_inserted_values_from_range_test() {
         init_logger();
         let mut rb_tree = RedBlackTree::new();
         let mut rng = thread_rng();
@@ -93,13 +93,44 @@ mod tests {
     }
 
     #[test]
-    fn walk_random_values_in_range_test() {
+    #[ignore = "walking rbtree stress test"]
+    fn walk_random_values_in_range_stress_test() {
         init_logger();
         let mut rng = thread_rng();
-        let mut rb_tree = RedBlackTree::new();
-        let val_rng = Uniform::new_inclusive(-(VALUES_COUNT / 2), VALUES_COUNT / 2);
+        let values_range = Uniform::new_inclusive(-(VALUES_COUNT / 2), VALUES_COUNT / 2);
         let mut result: Vec<i32> = Vec::with_capacity(VALUES_COUNT.try_into().unwrap());
-        let values: Vec<i32> = val_rng
+        for _ in 1..=1000 {
+            let mut rb_tree = RedBlackTree::new();
+            let values: Vec<i32> = values_range
+                .sample_iter(&mut rng)
+                .take(VALUES_COUNT.try_into().unwrap())
+                .collect();
+            debug!("values = {:?}", values);
+            let mut expected = values.clone();
+            expected.sort();
+            debug!("inserting values...");
+            for i in values.iter() {
+                debug!("\nvalue = {:?}", i);
+                rb_tree.insert(*i);
+            }
+            debug!("Walking rbtree...");
+            rb_tree.walk_in_order(|node| {
+                result.push(node.key);
+                debug!("\n {:#?}", node);
+            });
+            assert_eq!(expected, result, "{}", format!("values = {:?}", values));
+            result.clear();
+        }
+    }
+
+    #[test]
+    fn walk_random_values_in_range_test() {
+        init_logger(); 
+        let mut rb_tree = RedBlackTree::new();
+        let mut rng = thread_rng();
+        let values_range = Uniform::new_inclusive(-(VALUES_COUNT / 2), VALUES_COUNT / 2);
+        let mut result: Vec<i32> = Vec::with_capacity(VALUES_COUNT.try_into().unwrap());
+        let values: Vec<i32> = values_range
             .sample_iter(&mut rng)
             .take(VALUES_COUNT.try_into().unwrap())
             .collect();
@@ -115,7 +146,7 @@ mod tests {
             result.push(node.key);
             debug!("\n {:#?}", node);
         });
-        assert_eq!(expected, result);
+        assert_eq!(expected, result, "{}", format!("values = {:?}", values));
     }
 
     #[test]
