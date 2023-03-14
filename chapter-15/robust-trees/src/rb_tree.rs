@@ -6,7 +6,7 @@ use log::debug;
 use crate::node::{Tree, BareTree, Child, Rotation, Color, Node}; 
 
 #[derive(Default)]
-pub struct RedBlackTree<T: Copy + Clone + fmt::Debug> {
+pub struct RedBlackTree<T: Default + Copy + Clone + fmt::Debug> {
     root: Tree<T>,
     pub length: u64,
     id_node: u32,
