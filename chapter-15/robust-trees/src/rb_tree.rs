@@ -1,93 +1,9 @@
 use std::fmt;
-use std::ops::Not;
-use std::cmp::Ordering;
 use std::cell::{Ref, RefCell};
 use std::rc::Rc;
 use log::debug;
 
-pub type BareTree<T> = Rc<RefCell<Node<T>>>;
-pub type Tree<T> = Option<BareTree<T>>;
-
-#[derive(PartialEq, Copy, Clone)]
-enum Child {
-    Left,
-    Right,
-}
-
-impl Not for Child {
-    type Output = Self;
-
-    fn not(self) -> Self::Output {
-        match self {
-            Child::Left => Child::Right,
-            Child::Right => Child::Left,
-        }
-    }
-}
-
-enum Rotation {
-    Left,
-    Right,
-}
-
-#[derive(Debug, Default, PartialEq, Copy, Clone)]
-pub enum Color {
-    #[default]
-    Red,
-    Black,
-}
-
-#[derive(Default)]
-pub struct Node<T: Copy + Clone + fmt::Debug> {
-    id: u32,
-    pub color: Color,
-    pub key: T,
-    parent: Tree<T>,
-    left: Tree<T>,
-    right: Tree<T>,
-}
-
-impl<T> fmt::Debug for Node<T> 
-    where
-        T: Copy + Clone + fmt::Debug
-{
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let parent = repr(self.parent.clone());
-        let left = repr(self.left.clone());
-        let right = repr(self.right.clone());
-        f.debug_struct("Node")
-            .field("key", &self.key)
-            .field("color", &self.color)
-            .field("parent", &parent)
-            .field("left", &left)
-            .field("right", &right)
-            .finish()
-    } 
-}
-
-fn repr<T: Copy + Clone + fmt::Debug>(node: Tree<T>) -> Option<(T, Color)> {
-    if let Some(n) = node {
-        Some((n.borrow().key, n.borrow().color))
-    } else { None }
-}
-
-impl<T> PartialEq for Node<T> 
-    where 
-        T: PartialEq + Copy + Clone + fmt::Debug
-{
-    fn eq(&self, other: &Node<T>) -> bool {
-        self.key == other.key
-    }
-}
-
-impl<T> PartialOrd for Node<T> 
-    where
-        T: PartialOrd + Copy + Clone + fmt::Debug
-{
-    fn partial_cmp(&self, other: &Node<T>) -> Option<Ordering> {
-        self.key.partial_cmp(&other.key)
-    }
-}
+use crate::node::{Tree, BareTree, Child, Rotation, Color, Node}; 
 
 #[derive(Default)]
 pub struct RedBlackTree<T: Copy + Clone + fmt::Debug> {

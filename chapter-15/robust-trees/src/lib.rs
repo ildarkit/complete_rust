@@ -1,3 +1,4 @@
+mod node;
 pub mod rb_tree;
 
 #[cfg(test)]
