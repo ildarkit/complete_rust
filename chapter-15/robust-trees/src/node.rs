@@ -1,10 +1,11 @@
 use std::fmt;
 use std::ops::Not;
 use std::cmp::Ordering;
-use std::cell::RefCell;
+use std::cell::{Ref, RefCell};
 use std::rc::Rc;
 
 pub type Tree<T> = Option<BareTree<T>>;
+type RefCellNode<T> = Rc<RefCell<Node<T>>>;
 
 #[derive(PartialEq, Copy, Clone)]
 pub enum Child {
@@ -78,7 +79,7 @@ impl<T> fmt::Debug for Node<T>
 
 fn repr<T: Default + Copy + Clone + fmt::Debug>(node: Tree<T>) -> Option<(T, Color)> {
     if let Some(n) = node {
-        Some((n.get_key(), n.get_color()))
+        Some((n.key(), n.color()))
     } else { None }
 }
 
@@ -100,9 +101,9 @@ impl<T> PartialOrd for Node<T>
     }
 }
 
-#[derive(Clone, Default, PartialEq, PartialOrd)]
+#[derive(Debug, Clone, Default, PartialEq, PartialOrd)]
 pub struct BareTree<T: Default + Copy + Clone + fmt::Debug> {
-    node: Rc<RefCell<Node<T>>>,
+    node: RefCellNode<T>,
 }
 
 impl<T> BareTree<T>
@@ -118,7 +119,7 @@ impl<T> BareTree<T>
         }
     }
 
-    pub fn get_key(&self) -> T {
+    pub fn key(&self) -> T {
         self.node.borrow().key
     }
 
@@ -134,27 +135,43 @@ impl<T> BareTree<T>
         self.node.borrow_mut().parent = node.clone();
     }
 
-    pub fn get_left_child(&self) -> Tree<T> {
+    pub fn left_child(&self) -> Tree<T> {
         self.node.borrow().left.clone()
     }
 
-    pub fn get_right_child(&self) -> Tree<T> {
+    pub fn right_child(&self) -> Tree<T> {
         self.node.borrow().right.clone()
+    } 
+
+    pub fn unwrap_left_child(&self) -> BareTree<T> {
+        self.node.borrow().left.as_ref().unwrap().clone()
     }
 
-    pub fn get_parent(&self) -> Tree<T> {
+    pub fn unwrap_right_child(&self) -> BareTree<T> {
+        self.node.borrow().right.as_ref().unwrap().clone()
+    }
+
+    pub fn parent(&self) -> Tree<T> {
         self.node.borrow().parent.clone()
     }
 
-    pub fn get_id(&self) -> u32 {
+    pub fn unwrap_parent(&self) -> BareTree<T> {
+        self.node.borrow().parent.as_ref().unwrap().clone()
+    }
+
+    pub fn id(&self) -> u32 {
         self.node.borrow().id
     }
 
-    pub fn get_color(&self) -> Color {
+    pub fn color(&self) -> Color {
         self.node.borrow().color.clone()
     }
 
     pub fn set_color(&mut self, color: Color) {
         self.node.borrow_mut().color = color;
+    }
+
+    pub fn borrow(&self) -> Ref<'_, Node<T>> {
+        self.node.borrow()
     }
 }
