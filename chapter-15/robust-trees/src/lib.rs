@@ -154,8 +154,8 @@ mod tests {
     fn delete_test() {
         init_logger();
         let mut rb_tree = RedBlackTree::new();
-        let values = vec![5, 1, 7, 3, 6, 2, 4];
-        let expected = vec![1, 3, 4, 5, 6, 7];
+        let values = vec![1, 0, 1, 0, 1, 3, 1];
+        let expected = vec![0, 0, 1, 1, 1, 3];
         let mut result: Vec<i32> = Vec::with_capacity(6);
 
         debug!("inserting values...");
@@ -164,7 +164,7 @@ mod tests {
             rb_tree.insert(*i);
         }
         debug!("delete value...");
-        rb_tree.delete(2);
+        rb_tree.delete(1);
         debug!("walking rbtree...");
         rb_tree.walk_in_order(|node| {
             result.push(node.key);
@@ -187,8 +187,12 @@ mod tests {
         let remove_index = rng.gen_range(0..VALUES_COUNT) as usize;
         let mut expected = values.clone();
         expected.sort();
+        debug!("expected before remove = {:?}", expected);
+        debug!("index of remove = {:?}", remove_index);
         let deleted = expected.remove(remove_index);
         debug!("deleted value = {:?}", deleted);
+        debug!("expected after remove = {:?}", expected);
+        debug!("values = {:?}", values);
 
         debug!("inserting values...");
         for i in values.iter() {
