@@ -144,11 +144,11 @@ impl<T> BareTree<T>
     } 
 
     pub fn unwrap_left_child(&self) -> BareTree<T> {
-        self.node.borrow().left.as_ref().unwrap().clone()
+        self.left_child().as_ref().unwrap().clone()
     }
 
     pub fn unwrap_right_child(&self) -> BareTree<T> {
-        self.node.borrow().right.as_ref().unwrap().clone()
+        self.right_child().as_ref().unwrap().clone()
     }
 
     pub fn parent(&self) -> Tree<T> {
@@ -156,7 +156,7 @@ impl<T> BareTree<T>
     }
 
     pub fn unwrap_parent(&self) -> BareTree<T> {
-        self.node.borrow().parent.as_ref().unwrap().clone()
+        self.parent().as_ref().unwrap().clone()
     }
 
     pub fn id(&self) -> u32 {
