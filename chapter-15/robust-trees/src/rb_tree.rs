@@ -359,26 +359,22 @@ impl<T> RedBlackTree<T>
         true
     }
 
-    fn is_one_child(node: BareTree<T>) -> Tree<T> {
-        if node.borrow().left.is_none() {
-            node.borrow().right.clone()
-        } else if node.borrow().right.is_none() {
-            node.borrow().left.clone()
+    fn get_if_one_child(node: BareTree<T>) -> Tree<T> {
+        if node.left_child().is_none() {
+            node.right_child()
+        } else if node.right_child().is_none() {
+            node.left_child()
         } else { None }
     }
 
-    fn tree_minimum(node: Tree<T>) -> BareTree<T> {
+    fn tree_minimum(node: Tree<T>) -> Tree<T> {
         let mut node = node.clone();
-        let mut result: BareTree<T> = Default::default();
-        while let Some(n) = node {
-            result = n.clone();
-            node = n.borrow().left.clone();
+        let mut result = None;
+        while let Some(n) = node.clone() {
+            result = node.clone();
+            node = n.left_child();
         }
         result
-    }
-
-    fn is_color(node: BareTree<T>, color: Color) -> bool {
-        node.borrow().color == color
     }
 
     fn delete_fixup(&mut self, node: Tree<T>) {
