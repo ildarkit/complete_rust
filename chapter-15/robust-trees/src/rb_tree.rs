@@ -379,29 +379,24 @@ impl<T> RedBlackTree<T>
 
     fn delete_fixup(&mut self, node: Tree<T>) {
         let mut node = node.clone();
-        while let Some(inner_node) = node.clone() {
-            if inner_node.clone() != self.root.as_ref().unwrap().clone()
-                && Self::is_color(inner_node.clone(), Color::Black)
+        while let Some(child1) = node.clone() {
+            if child1.id() != self.root.as_ref().unwrap().id()
+                && child1.color() == Color::Black
             {
-                let child = Self::node_is_child(inner_node.clone());
-                let parent_child = match child {
+                let child2 = match Self::node_is_child(child1.clone()) {
                     Some(Child::Left) => {
-                        inner_node.borrow()
-                            .parent.as_ref().unwrap().borrow()
-                            .right.as_ref().unwrap().clone()
+                        child1.unwrap_parent().unwrap_right_child()
                     },
                     Some(Child::Right) => {
-                        inner_node.borrow()
-                            .parent.as_ref().unwrap().borrow()
-                            .left.as_ref().unwrap().clone()
+                        child1.unwrap_parent().unwrap_left_child()
                     },
-                    None => { break },
+                    None => { unreachable!() },
                 };
-                node = self.delete_fixup_subtree(inner_node.clone(),
-                    parent_child.clone());
+                node = self.delete_fixup_subtree(child1.clone(),
+                    child2.clone());
             } else { break }
         }
-        self.root.as_ref().unwrap().borrow_mut().color = Color::Black;
+        self.root.as_mut().unwrap().set_color(Color::Black);
     }
 
     fn delete_fixup_subtree(&mut self,
