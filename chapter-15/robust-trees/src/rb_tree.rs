@@ -284,43 +284,33 @@ impl<T> RedBlackTree<T>
         debug!("\nend rotate fn");
     }
 
-    fn replace(&mut self,
-        removable: BareTree<T>,
-        mut replacement: BareTree<T>)
-    {
+    fn replace(&mut self, removable: BareTree<T>, replacement: Tree<T>) {
         let parent = removable.parent();
         match parent {
-            None => self.root = Self::to_node(replacement.clone()),
+            None => self.root = replacement.clone(),
             Some(mut p) => {
-                let is_left_child = Self::is_replaceable(
+                let is_left_child = Self::node_is(
                     removable.clone(),
-                    p.left_child() 
+                    p.left_child()
                 );
                 match is_left_child {
-                    true => {
-                        p.set_left_child(Self::to_node(replacement.clone()));
-                    }
+                    true => p.set_left_child(replacement.clone()),
                     false => {
-                        let is_right_child = Self::is_replaceable(
-                            removable.clone(),
-                            p.right_child()
-                        );
-                        if is_right_child { 
-                            p.set_right_child(Self::to_node(replacement.clone()))
+                        if Self::node_is(removable.clone(), p.right_child()) {
+                            p.set_right_child(replacement.clone());
                         };
                     }
                 }
             }
         }
-        replacement.set_parent(removable.parent());
+        if let Some(mut node) = replacement {
+            node.set_parent(removable.parent());
+        }
     }
 
-    fn is_replaceable(
-        removable: BareTree<T>,
-        replacement: Tree<T>) -> bool
-    {
-        match replacement.clone() {
-            Some(ref node) => node.id() == removable.id(),
+    fn node_is(node: BareTree<T>, other: Tree<T>) -> bool {
+        match other.clone() {
+            Some(ref n) => n.id() == node.id(),
             None => false,
         }
     } 
