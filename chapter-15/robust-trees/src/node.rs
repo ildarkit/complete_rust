@@ -135,6 +135,10 @@ impl<T> BareTree<T>
         self.node.borrow().key
     }
 
+    pub fn set_key(&mut self, key: T) {
+        self.node.borrow_mut().key = key;
+    }
+
     pub fn set_left_child(&mut self, node: Tree<T>) {
         self.node.borrow_mut().left = node.clone();
     }
