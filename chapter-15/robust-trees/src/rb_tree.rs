@@ -316,46 +316,40 @@ impl<T> RedBlackTree<T>
     } 
 
     pub fn delete(&mut self, value: T) -> bool {
-        let child: BareTree<T>;
-        let node = match self.find_node(value) {
+        let mut deleted = match self.find_node(value) {
             Some(node) => node.clone(),
             None => return false,
         };
-        let mut node_color = node.borrow().color;
+        debug!("\nnode for delete = {:#?}", deleted);
+        let mut node_color = deleted.color();
 
-        match Self::is_one_child(node.clone()) {
-            Some(n) => {
-                child = n.clone(); 
-                self.transplant(node.clone(), child.clone());
+        let replaced = match Self::get_if_one_child(deleted.clone()) {
+            Some(child) => {
+                let child = Self::to_node(child.clone());
+                self.replace(deleted.clone(), child.clone());
+                child
             }
+            // node has two or no childrens
             None => {
-                let min_node = Self::tree_minimum(node.borrow().right.clone());
-                node_color = min_node.borrow().color;
-                child = min_node.borrow().right.as_ref().unwrap().clone();
-                if min_node.borrow().parent.as_ref().unwrap().clone() == node.clone() {
-                    child.borrow_mut().parent = Self::to_node(min_node.clone());
-                } else {
-                    self.transplant(
-                        min_node.clone(),
-                        min_node.borrow()
-                            .right.as_ref().unwrap().clone()
-                    );
-                    min_node.borrow_mut().right = node.borrow().right.clone();
-                    min_node.borrow()
-                        .right.as_ref().unwrap().borrow_mut()
-                        .parent = Self::to_node(min_node.clone());
-                }
-                self.transplant(node.clone(), min_node.clone());
-                min_node.borrow_mut().left = node.borrow().left.clone();
-                min_node.borrow()
-                    .left.as_ref().unwrap().borrow_mut()
-                    .parent = Self::to_node(min_node.clone());
-                min_node.borrow_mut().color = node.borrow().color;
+                let replace = match Self::tree_minimum(deleted.right_child()) {
+                    Some(replace) => {
+                        let replace_child = replace.right_child();
+                        debug!("\replace = {:#?}", replace);
+                        node_color = replace.color();
+                        deleted.set_key(replace.key());
+                        debug!("\replace node child = {:#?}", replace_child);
+                        self.replace(replace.clone(), replace_child.clone());
+                        replace_child
+                    }
+                    None => None,
+                };
+                replace
             }
-        }
+        };
         if node_color == Color::Black {
-            self.delete_fixup(Self::to_node(child.clone()));
+            self.delete_fixup(replaced.clone());
         }
+        self.length -=1;
         true
     }
 
