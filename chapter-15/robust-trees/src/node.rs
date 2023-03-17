@@ -24,9 +24,21 @@ impl Not for Child {
     }
 }
 
+#[derive(Copy, Clone)]
 pub enum Rotation {
     Left,
     Right,
+}
+
+impl Not for Rotation {
+    type Output = Self;
+
+    fn not(self) -> Self::Output {
+        match self {
+            Rotation::Left => Rotation::Right,
+            Rotation::Right => Rotation::Left,
+        }
+    }
 }
 
 #[derive(Debug, Default, PartialEq, Copy, Clone)]
