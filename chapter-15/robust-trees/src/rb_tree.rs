@@ -379,69 +379,86 @@ impl<T> RedBlackTree<T>
 
     fn delete_fixup(&mut self, node: Tree<T>) {
         let mut node = node.clone();
-        while let Some(child1) = node.clone() {
-            if child1.id() != self.root.as_ref().unwrap().id()
-                && child1.color() == Color::Black
+        while let Some(n) = node.clone() {
+            if n.id() != self.root.as_ref().unwrap().id()
+                && n.color() == Color::Black
             {
-                let child2 = match Self::node_is_child(child1.clone()) {
-                    Some(Child::Left) => {
-                        child1.unwrap_parent().unwrap_right_child()
-                    },
-                    Some(Child::Right) => {
-                        child1.unwrap_parent().unwrap_left_child()
-                    },
-                    None => { unreachable!() },
-                };
-                node = self.delete_fixup_subtree(child1.clone(),
-                    child2.clone());
+                let child = Self::node_is_child(n.clone());
+                let (sibling, rotation) =
+                    match child.clone() {
+                        Some(Child::Left) => {
+                            (n.unwrap_parent().unwrap_right_child(),
+                                Rotation::Left)
+                        },
+                        Some(Child::Right) => {
+                            (n.unwrap_parent().unwrap_left_child(),
+                                Rotation::Right)
+                        },
+                        None => { unreachable!() },
+                    };
+                node = self.delete_fixup_subtree(
+                    (n.clone(), sibling.clone()),
+                    rotation,
+                    child.unwrap(),
+                );
             } else { break }
         }
         self.root.as_mut().unwrap().set_color(Color::Black);
     }
 
-    fn delete_fixup_subtree(&mut self,
-        node: BareTree<T>,
-        parent_child: BareTree<T>)
-        -> Tree<T>
+    fn delete_fixup_subtree(&mut self, sibling: (BareTree<T>, BareTree<T>),
+        rotation: Rotation, is_child: Child) -> Tree<T>
     {
-        let mut parent_child = parent_child.clone();
-        let parent_node = node.borrow().parent.as_ref().unwrap().clone();
-
-        if Self::is_color(parent_child.clone(), Color::Red) {
-            parent_child.borrow_mut().color = Color::Black;
-            parent_node.borrow_mut().color = Color::Red;
-            self.rotate(parent_node.clone(), &Rotation::Left);
-            parent_child = node.borrow().parent.as_ref().unwrap().clone();
+        let (left, mut right) = sibling.clone();
+        let mut parent = left.unwrap_parent();
+        if right.color() == Color::Red {
+            right.set_color(Color::Black);
+            parent.set_color(Color::Red);
+            self.rotate(parent.clone(), &rotation.clone());
+            right = match is_child.clone() {
+                Child::Left => parent.unwrap_left_child(),
+                Child::Right => parent.unwrap_right_child(),
+            };
         }
-        if Self::is_color(
-            parent_child.borrow().left.as_ref().unwrap().clone(),
-            Color::Black) &&
-            Self::is_color(
-                parent_child.borrow().right.as_ref().unwrap().clone(),
-                Color::Black)
-        {
-            parent_child.borrow_mut().color = Color::Red;
-            node.borrow().parent.clone()
-        } else {
-            if Self::is_color(
-                parent_child.borrow()
-                    .right.as_ref().unwrap().clone(),
-                Color::Black)
-            {
-                parent_child.borrow()
-                    .left.as_ref().unwrap().borrow_mut().color = Color::Black;
-                parent_child.borrow_mut().color = Color::Red;
-                self.rotate(parent_child.clone(), &Rotation::Right);
-                parent_child = node.borrow()
-                    .parent.as_ref().unwrap().borrow()
-                    .right.as_ref().unwrap().clone();
+
+        let black_childrens = right.unwrap_left_child().color() == Color::Black &&
+            right.unwrap_right_child().color() == Color::Black;
+
+        match black_childrens {
+            true => {
+                right.set_color(Color::Red);
+                left.parent()
             }
-            parent_child.borrow_mut()
-                .color = node.borrow().parent.as_ref().unwrap().borrow().color;
-            node.borrow().parent.as_ref().unwrap().borrow_mut().color = Color::Black;
-            parent_child.borrow().right.as_ref().unwrap().borrow_mut().color = Color::Black;
-            self.rotate(node.borrow().parent.as_ref().unwrap().clone(), &Rotation::Left);
-            self.root.clone()
+            false => {
+                let (child_color, mut child) = match is_child.clone() {
+                    Child::Left => {
+                        (right.unwrap_right_child().color(),
+                        right.unwrap_left_child())
+                    }
+                    Child::Right => {
+                        (right.unwrap_left_child().color(),
+                        right.unwrap_right_child())
+                    }
+                };
+                if child_color == Color::Black {
+                    child.set_color(Color::Black);
+                    right.set_color(Color::Red);
+                    self.rotate(right.clone(), &!rotation.clone());
+                    match is_child.clone() {
+                        Child::Left => right = left.unwrap_parent().unwrap_right_child(),
+                        Child::Right => right = left.unwrap_parent().unwrap_left_child(),
+                    }
+                }
+                right.set_color(
+                    left.unwrap_parent().color());
+                left.unwrap_parent().set_color(Color::Black);
+                match is_child.clone() {
+                    Child::Left => right.unwrap_right_child().set_color(Color::Black),
+                    Child::Right => right.unwrap_left_child().set_color(Color::Black),
+                }
+                self.rotate(left.unwrap_parent(), &rotation.clone());
+                self.root.clone()
+            }
         }
     }
 }
