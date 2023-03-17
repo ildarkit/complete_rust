@@ -154,9 +154,9 @@ mod tests {
     fn delete_test() {
         init_logger();
         let mut rb_tree = RedBlackTree::new();
-        let values = vec![1, 0, 1, 0, 1, 3, 1];
-        let expected = vec![0, 0, 1, 1, 1, 3];
-        let mut result: Vec<i32> = Vec::with_capacity(6);
+        let values = vec![3, 0, 3, 0, 0, 2];
+        let expected = vec![0, 0, 0, 3, 3];
+        let mut result: Vec<i32> = Vec::with_capacity(5);
 
         debug!("inserting values...");
         for i in values.iter() {
@@ -164,7 +164,7 @@ mod tests {
             rb_tree.insert(*i);
         }
         debug!("delete value...");
-        rb_tree.delete(1);
+        rb_tree.delete(2);
         debug!("walking rbtree...");
         rb_tree.walk_in_order(|node| {
             result.push(node.key);
@@ -176,11 +176,29 @@ mod tests {
     #[test]
     fn delete_random_test() {
         init_logger();
-        let mut rb_tree = RedBlackTree::new();
-        let mut rng = thread_rng();
+        let rng = thread_rng();
         let values_range = Uniform::new_inclusive(-(VALUES_COUNT / 2), VALUES_COUNT / 2);
         let mut result: Vec<i32> = Vec::with_capacity(VALUES_COUNT.try_into().unwrap());
-        let values: Vec<i32> = values_range
+        run_delete_test(rng.clone(), values_range, &mut result);
+    }
+
+    #[test]
+    #[ignore = "delete random from rbtree stress test"]
+    fn delete_random_stress_test() {
+        init_logger();
+        let rng = thread_rng();
+        let values_range = Uniform::new_inclusive(-(VALUES_COUNT / 2), VALUES_COUNT / 2);
+        let mut result: Vec<i32> = Vec::with_capacity(VALUES_COUNT.try_into().unwrap());
+
+        for _ in 1..1000 {
+            run_delete_test(rng.clone(), values_range, &mut result);
+            result.clear();
+        }
+    }
+
+    fn run_delete_test(mut rng: ThreadRng, distrib: Uniform<i32>, result: &mut Vec<i32>) {
+        let mut rb_tree = RedBlackTree::new();
+        let values: Vec<i32> = distrib
             .sample_iter(&mut rng)
             .take(VALUES_COUNT.try_into().unwrap())
             .collect();
@@ -190,7 +208,7 @@ mod tests {
         debug!("expected before remove = {:?}", expected);
         debug!("index of remove = {:?}", remove_index);
         let deleted = expected.remove(remove_index);
-        debug!("deleted value = {:?}", deleted);
+        debug!("deleted value = {}", deleted);
         debug!("expected after remove = {:?}", expected);
         debug!("values = {:?}", values);
 
@@ -206,6 +224,7 @@ mod tests {
             result.push(node.key);
             debug!("\n {:#?}", node);
         });
-        assert_eq!(result, expected, "{}", format!("values = {:?}", values));
+        assert_eq!(*result, expected, "{}",
+            format!("deleted = {}, values = {:?}", deleted, values));
     }
 }
