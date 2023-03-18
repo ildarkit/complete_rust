@@ -404,7 +404,9 @@ impl<T> RedBlackTree<T>
                 );
             } else { break }
         }
-        self.root.as_mut().unwrap().set_color(Color::Black);
+        if self.root.is_some() {
+            self.root.as_mut().unwrap().set_color(Color::Black);
+        }
     }
 
     fn delete_fixup_subtree(&mut self, sibling: (BareTree<T>, BareTree<T>),
