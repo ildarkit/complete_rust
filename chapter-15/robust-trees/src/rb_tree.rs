@@ -124,6 +124,9 @@ impl<T> RedBlackTree<T>
     fn insert_fixup(&mut self, inserted: Tree<T>) {
         let mut current = inserted.clone();
         while let Some(node) = current.clone() {
+            if node.color() == Color::Black {
+                break;
+            }
             let color = if let Some(parent) = node.parent() {
                 parent.color()
             } else {
@@ -223,6 +226,7 @@ impl<T> RedBlackTree<T>
     }
 
     fn rotate(&mut self, mut node: BareTree<T>, rotation: &Rotation) {
+        debug!("\nrotation = {:?}", rotation);
         debug!("\nnode = {:#?}", node);
         let (node_parent, mut new_parent, new_parent_child) = match rotation {
             Rotation::Left => {
