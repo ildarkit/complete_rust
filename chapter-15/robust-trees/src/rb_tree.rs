@@ -341,7 +341,10 @@ impl<T> RedBlackTree<T>
                         self.replace(replace.clone(), replace_child.clone());
                         replace_child
                     }
-                    None => None,
+                    None => {
+                        self.replace(deleted.clone(), None);
+                        None
+                    }
                 };
                 replace
             }
