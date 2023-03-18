@@ -205,4 +205,39 @@ mod tests {
         assert_eq!(*result, expected, "{}",
             format!("deleted = {}, values = {:?}", deleted, values));
     }
+
+    #[test]
+    fn delete_all_test() {
+        init_logger();
+        let mut rng = thread_rng();
+        let values_range = Uniform::new_inclusive(-(VALUES_COUNT / 2), VALUES_COUNT / 2);
+        let mut result: Vec<i32> = Vec::with_capacity(VALUES_COUNT.try_into().unwrap());
+
+        let mut rb_tree = RedBlackTree::new();
+        let values: Vec<i32> = values_range
+            .sample_iter(&mut rng)
+            .take(VALUES_COUNT.try_into().unwrap())
+            .collect();
+        debug!("values = {:?}", values);
+        let mut shuffled = values.clone();
+        shuffled.shuffle(&mut rng); 
+        debug!("shuffled = {:?}", shuffled);
+
+        debug!("inserting values...");
+        for i in values.iter() {
+            rb_tree.insert(*i);
+        }
+        debug!("delete all values from rbtree...");
+        while !shuffled.is_empty() {
+            let deleted = shuffled.pop();
+            rb_tree.delete(deleted.unwrap());
+        }
+        debug!("walking rbtree...");
+        rb_tree.walk_in_order(|node| {
+            result.push(node.key);
+        });
+        debug!("result = {:?}", result);
+        assert!(result.is_empty());
+
+    } 
 }
