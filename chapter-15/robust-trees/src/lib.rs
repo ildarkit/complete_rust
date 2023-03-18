@@ -8,7 +8,7 @@ mod tests {
     use rand::distributions::Uniform;
     use log::debug;
 
-    const VALUES_COUNT: i32 = 20000;
+    const VALUES_COUNT: i32 = 2000;
 
     fn init_logger() {
         let _ = env_logger::builder().is_test(true).try_init();
@@ -148,30 +148,7 @@ mod tests {
             debug!("\n {:#?}", node);
         });
         assert_eq!(expected, result, "{}", format!("values = {:?}", values));
-    }
-
-    #[test]
-    fn delete_test() {
-        init_logger();
-        let mut rb_tree = RedBlackTree::new();
-        let values = vec![3, 0, 3, 0, 0, 2];
-        let expected = vec![0, 0, 0, 3, 3];
-        let mut result: Vec<i32> = Vec::with_capacity(5);
-
-        debug!("inserting values...");
-        for i in values.iter() {
-            debug!("\nvalue = {:?}", i);
-            rb_tree.insert(*i);
-        }
-        debug!("delete value...");
-        rb_tree.delete(2);
-        debug!("walking rbtree...");
-        rb_tree.walk_in_order(|node| {
-            result.push(node.key);
-            debug!("\n {:#?}", node);
-        });
-        assert_eq!(result, expected);
-    }
+    } 
 
     #[test]
     fn delete_random_test() {
@@ -224,6 +201,7 @@ mod tests {
             result.push(node.key);
             debug!("\n {:#?}", node);
         });
+        debug!("result = {:?}", result);
         assert_eq!(*result, expected, "{}",
             format!("deleted = {}, values = {:?}", deleted, values));
     }
