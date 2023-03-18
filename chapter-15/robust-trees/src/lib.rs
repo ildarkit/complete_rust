@@ -209,12 +209,30 @@ mod tests {
     #[test]
     fn delete_all_test() {
         init_logger();
-        let mut rng = thread_rng();
+        let rng = thread_rng();
         let values_range = Uniform::new_inclusive(-(VALUES_COUNT / 2), VALUES_COUNT / 2);
         let mut result: Vec<i32> = Vec::with_capacity(VALUES_COUNT.try_into().unwrap());
 
+        run_clear_rbtree(rng.clone(), values_range, &mut result);
+
+    }
+
+    #[test]
+    #[ignore = "clear rbtree stress test"]
+    fn delete_all_stress_test() {
+        init_logger();
+        let rng = thread_rng();
+        let values_range = Uniform::new_inclusive(-(VALUES_COUNT / 2), VALUES_COUNT / 2);
+        let mut result: Vec<i32> = Vec::with_capacity(VALUES_COUNT.try_into().unwrap());
+
+        for _ in 1..=100000 {
+            run_clear_rbtree(rng.clone(), values_range, &mut result);
+        }
+    }
+
+    fn run_clear_rbtree(mut rng: ThreadRng, distrib: Uniform<i32>, result: &mut Vec<i32>) {
         let mut rb_tree = RedBlackTree::new();
-        let values: Vec<i32> = values_range
+        let values: Vec<i32> = distrib
             .sample_iter(&mut rng)
             .take(VALUES_COUNT.try_into().unwrap())
             .collect();
@@ -229,8 +247,9 @@ mod tests {
         }
         debug!("delete all values from rbtree...");
         while !shuffled.is_empty() {
-            let deleted = shuffled.pop();
-            rb_tree.delete(deleted.unwrap());
+            let deleted = shuffled.pop().unwrap();
+            debug!("delete value = {}", deleted);
+            rb_tree.delete(deleted);
         }
         debug!("walking rbtree...");
         rb_tree.walk_in_order(|node| {
@@ -238,6 +257,5 @@ mod tests {
         });
         debug!("result = {:?}", result);
         assert!(result.is_empty());
-
-    } 
+    }
 }
