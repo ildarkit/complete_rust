@@ -338,10 +338,10 @@ impl<T> RedBlackTree<T>
                 let replace = match Self::tree_minimum(deleted.right_child()) {
                     Some(replace) => {
                         let replace_child = replace.right_child();
-                        debug!("\replace = {:#?}", replace);
+                        debug!("\nreplace = {:#?}", replace);
                         node_color = replace.color();
                         deleted.set_key(replace.key());
-                        debug!("\replace node child = {:#?}", replace_child);
+                        debug!("\nreplace node child = {:#?}", replace_child);
                         self.replace(replace.clone(), replace_child.clone());
                         replace_child
                     }
