@@ -24,7 +24,7 @@ impl Not for Child {
     }
 }
 
-#[derive(Copy, Clone)]
+#[derive(Debug, Copy, Clone)]
 pub enum Rotation {
     Left,
     Right,
@@ -80,6 +80,7 @@ impl<T> fmt::Debug for Node<T>
         let left = repr(self.left.clone());
         let right = repr(self.right.clone());
         f.debug_struct("Node")
+            .field("id", &self.id)
             .field("key", &self.key)
             .field("color", &self.color)
             .field("parent", &parent)
@@ -89,9 +90,9 @@ impl<T> fmt::Debug for Node<T>
     } 
 }
 
-fn repr<T: Default + Copy + Clone + fmt::Debug>(node: Tree<T>) -> Option<(T, Color)> {
+fn repr<T: Default + Copy + Clone + fmt::Debug>(node: Tree<T>) -> Option<(u32, T, Color)> {
     if let Some(n) = node {
-        Some((n.key(), n.color()))
+        Some((n.id(), n.key(), n.color()))
     } else { None }
 }
 
