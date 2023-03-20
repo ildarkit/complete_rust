@@ -392,11 +392,11 @@ impl<T> RedBlackTree<T>
                 let (sibling, rotation) =
                     match child.clone() {
                         Some(Child::Left) => {
-                            (n.unwrap_parent().unwrap_right_child(),
+                            (n.unwrap_parent().right_child(),
                                 Rotation::Left)
                         },
                         Some(Child::Right) => {
-                            (n.unwrap_parent().unwrap_left_child(),
+                            (n.unwrap_parent().left_child(),
                                 Rotation::Right)
                         },
                         None => { unreachable!() },
@@ -418,18 +418,18 @@ impl<T> RedBlackTree<T>
         }
     }
 
-    fn delete_fixup_subtree(&mut self, siblings: (BareTree<T>, BareTree<T>),
+    fn delete_fixup_subtree(&mut self, siblings: (BareTree<T>, Tree<T>),
         rotation: Rotation, node_is_child: Child) -> Tree<T>
     {
         let (node, mut sibling) = siblings;
         let mut parent = node.unwrap_parent();
-        if sibling.color() == Color::Red {
-            sibling.set_color(Color::Black);
+        if sibling.is_some() && sibling.as_ref().unwrap().color() == Color::Red {
+            sibling.unwrap().set_color(Color::Black);
             parent.set_color(Color::Red);
             self.rotate(parent.clone(), &rotation.clone());
             sibling = match node_is_child.clone() {
-                Child::Left => parent.unwrap_right_child(),
-                Child::Right => parent.unwrap_left_child(),
+                Child::Left => parent.right_child(),
+                Child::Right => parent.left_child(),
             };
         }
 
@@ -438,10 +438,12 @@ impl<T> RedBlackTree<T>
 
         match red_nephews {
             false => {
-                sibling.set_color(Color::Red);
+                if sibling.is_some() {
+                    sibling.unwrap().set_color(Color::Red);
+                }
                 node.parent()
             }
-            true => { 
+            true => {
                 let mut close_nephew = nephews[0].clone();
                 let distant_nephew = nephews[1].clone();
                 let distant_black = Self::any_colors(
@@ -451,16 +453,16 @@ impl<T> RedBlackTree<T>
                  
                 if distant_black {
                     close_nephew.as_mut().unwrap().set_color(Color::Black);
-                    sibling.set_color(Color::Red);
-                    self.rotate(sibling.clone(), &!rotation.clone());
+                    sibling.as_mut().unwrap().set_color(Color::Red);
+                    self.rotate(sibling.unwrap().clone(), &!rotation.clone());
                     match node_is_child.clone() {
-                        Child::Left => sibling = node.unwrap_parent().unwrap_right_child(),
-                        Child::Right => sibling = node.unwrap_parent().unwrap_left_child(),
+                        Child::Left => sibling = node.unwrap_parent().right_child(),
+                        Child::Right => sibling = node.unwrap_parent().left_child(),
                     }
                 } else if let Some(mut distant_nephew) = distant_nephew{
                     distant_nephew.set_color(Color::Black);
                 }
-                sibling.set_color(
+                sibling.unwrap().set_color(
                     node.unwrap_parent().color());
                 node.unwrap_parent().set_color(Color::Black); 
                 self.rotate(node.unwrap_parent(), &rotation.clone());
@@ -469,10 +471,14 @@ impl<T> RedBlackTree<T>
         }
     }
 
-    fn childrens(node: &BareTree<T>, first_child: &Child) -> Vec<Tree<T>> {
+    fn childrens(node: &Tree<T>, first_child: &Child) -> Vec<Tree<T>> {
+        let (left, right) = match node {
+            Some(n) => (n.left_child(), n.right_child()),
+            None => (None, None),
+        };
         match first_child {
-            Child::Left => vec![node.left_child(), node.right_child()],
-            Child::Right => vec![node.right_child(), node.left_child()],
+            Child::Left => vec![left, right],
+            Child::Right => vec![right, left],
         }
     }
 
