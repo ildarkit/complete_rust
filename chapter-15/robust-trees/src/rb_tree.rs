@@ -427,34 +427,31 @@ impl<T> RedBlackTree<T>
             };
         }
 
-        let black_nephews = sibling.unwrap_left_child().color() == Color::Black &&
-            sibling.unwrap_right_child().color() == Color::Black;
+        let nephews = Self::childrens(&sibling, &node_is_child);
+        let red_nephews = Self::any_colors(&nephews, &Color::Red);
 
-        match black_nephews {
-            true => {
+        match red_nephews {
+            false => {
                 sibling.set_color(Color::Red);
                 node.parent()
             }
-            false => {
-                let (mut distant_nephew, mut close_nephew) = match node_is_child.clone() {
-                    Child::Left => {
-                        (sibling.unwrap_right_child(),
-                        sibling.unwrap_left_child())
-                    }
-                    Child::Right => {
-                        (sibling.unwrap_left_child(),
-                        sibling.unwrap_right_child())
-                    }
-                };
-                if distant_nephew.color() == Color::Black {
-                    close_nephew.set_color(Color::Black);
+            true => { 
+                let mut close_nephew = nephews[0].clone();
+                let distant_nephew = nephews[1].clone();
+                let distant_black = Self::any_colors(
+                    &vec![distant_nephew.clone()],
+                    &Color::Black
+                );
+                 
+                if distant_black {
+                    close_nephew.as_mut().unwrap().set_color(Color::Black);
                     sibling.set_color(Color::Red);
                     self.rotate(sibling.clone(), &!rotation.clone());
                     match node_is_child.clone() {
                         Child::Left => sibling = node.unwrap_parent().unwrap_right_child(),
                         Child::Right => sibling = node.unwrap_parent().unwrap_left_child(),
                     }
-                } else {
+                } else if let Some(mut distant_nephew) = distant_nephew{
                     distant_nephew.set_color(Color::Black);
                 }
                 sibling.set_color(
@@ -464,5 +461,21 @@ impl<T> RedBlackTree<T>
                 self.root.clone()
             }
         }
+    }
+
+    fn childrens(node: &BareTree<T>, first_child: &Child) -> Vec<Tree<T>> {
+        match first_child {
+            Child::Left => vec![node.left_child(), node.right_child()],
+            Child::Right => vec![node.right_child(), node.left_child()],
+        }
+    }
+
+    fn any_colors(nodes: &Vec<Tree<T>>, color: &Color) -> bool {
+        nodes.iter()
+            .any(|node| {
+                if let Some(n) = node {
+                    n.color() == *color
+                } else { false }
+            })
     }
 }
