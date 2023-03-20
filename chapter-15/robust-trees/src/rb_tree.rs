@@ -427,41 +427,39 @@ impl<T> RedBlackTree<T>
             };
         }
 
-        let black_childrens = sibling.unwrap_left_child().color() == Color::Black &&
+        let black_nephews = sibling.unwrap_left_child().color() == Color::Black &&
             sibling.unwrap_right_child().color() == Color::Black;
 
-        match black_childrens {
+        match black_nephews {
             true => {
                 sibling.set_color(Color::Red);
                 node.parent()
             }
             false => {
-                let (child_color, mut child) = match node_is_child.clone() {
+                let (mut distant_nephew, mut close_nephew) = match node_is_child.clone() {
                     Child::Left => {
-                        (sibling.unwrap_right_child().color(),
+                        (sibling.unwrap_right_child(),
                         sibling.unwrap_left_child())
                     }
                     Child::Right => {
-                        (sibling.unwrap_left_child().color(),
+                        (sibling.unwrap_left_child(),
                         sibling.unwrap_right_child())
                     }
                 };
-                if child_color == Color::Black {
-                    child.set_color(Color::Black);
+                if distant_nephew.color() == Color::Black {
+                    close_nephew.set_color(Color::Black);
                     sibling.set_color(Color::Red);
                     self.rotate(sibling.clone(), &!rotation.clone());
                     match node_is_child.clone() {
                         Child::Left => sibling = node.unwrap_parent().unwrap_right_child(),
                         Child::Right => sibling = node.unwrap_parent().unwrap_left_child(),
                     }
+                } else {
+                    distant_nephew.set_color(Color::Black);
                 }
                 sibling.set_color(
                     node.unwrap_parent().color());
-                node.unwrap_parent().set_color(Color::Black);
-                match node_is_child.clone() {
-                    Child::Left => sibling.unwrap_right_child().set_color(Color::Black),
-                    Child::Right => sibling.unwrap_left_child().set_color(Color::Black),
-                }
+                node.unwrap_parent().set_color(Color::Black); 
                 self.rotate(node.unwrap_parent(), &rotation.clone());
                 self.root.clone()
             }
