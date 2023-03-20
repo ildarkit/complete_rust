@@ -10,7 +10,7 @@ use crate::node::{
 #[derive(Default)]
 pub struct RedBlackTree<T: Default + Copy + Clone + fmt::Debug> {
     root: Tree<T>,
-    pub length: u64,
+    length: usize,
     id_node: u32,
 }
 
@@ -20,7 +20,11 @@ impl<T> RedBlackTree<T>
 {
     pub fn new() -> Self {
         Self { ..Default::default() }
-    } 
+    }
+
+    pub fn len(&self) -> usize {
+        self.length
+    }
 
     pub fn insert(&mut self, value: T) {
         self.length += 1;
