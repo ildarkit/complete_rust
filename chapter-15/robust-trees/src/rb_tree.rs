@@ -409,57 +409,57 @@ impl<T> RedBlackTree<T>
         }
     }
 
-    fn delete_fixup_subtree(&mut self, sibling: (BareTree<T>, BareTree<T>),
-        rotation: Rotation, is_child: Child) -> Tree<T>
+    fn delete_fixup_subtree(&mut self, siblings: (BareTree<T>, BareTree<T>),
+        rotation: Rotation, node_is_child: Child) -> Tree<T>
     {
-        let (left, mut right) = sibling.clone();
-        let mut parent = left.unwrap_parent();
-        if right.color() == Color::Red {
-            right.set_color(Color::Black);
+        let (node, mut sibling) = siblings;
+        let mut parent = node.unwrap_parent();
+        if sibling.color() == Color::Red {
+            sibling.set_color(Color::Black);
             parent.set_color(Color::Red);
             self.rotate(parent.clone(), &rotation.clone());
-            right = match is_child.clone() {
-                Child::Left => parent.unwrap_left_child(),
-                Child::Right => parent.unwrap_right_child(),
+            sibling = match node_is_child.clone() {
+                Child::Left => parent.unwrap_right_child(),
+                Child::Right => parent.unwrap_left_child(),
             };
         }
 
-        let black_childrens = right.unwrap_left_child().color() == Color::Black &&
-            right.unwrap_right_child().color() == Color::Black;
+        let black_childrens = sibling.unwrap_left_child().color() == Color::Black &&
+            sibling.unwrap_right_child().color() == Color::Black;
 
         match black_childrens {
             true => {
-                right.set_color(Color::Red);
-                left.parent()
+                sibling.set_color(Color::Red);
+                node.parent()
             }
             false => {
-                let (child_color, mut child) = match is_child.clone() {
+                let (child_color, mut child) = match node_is_child.clone() {
                     Child::Left => {
-                        (right.unwrap_right_child().color(),
-                        right.unwrap_left_child())
+                        (sibling.unwrap_right_child().color(),
+                        sibling.unwrap_left_child())
                     }
                     Child::Right => {
-                        (right.unwrap_left_child().color(),
-                        right.unwrap_right_child())
+                        (sibling.unwrap_left_child().color(),
+                        sibling.unwrap_right_child())
                     }
                 };
                 if child_color == Color::Black {
                     child.set_color(Color::Black);
-                    right.set_color(Color::Red);
-                    self.rotate(right.clone(), &!rotation.clone());
-                    match is_child.clone() {
-                        Child::Left => right = left.unwrap_parent().unwrap_right_child(),
-                        Child::Right => right = left.unwrap_parent().unwrap_left_child(),
+                    sibling.set_color(Color::Red);
+                    self.rotate(sibling.clone(), &!rotation.clone());
+                    match node_is_child.clone() {
+                        Child::Left => sibling = node.unwrap_parent().unwrap_right_child(),
+                        Child::Right => sibling = node.unwrap_parent().unwrap_left_child(),
                     }
                 }
-                right.set_color(
-                    left.unwrap_parent().color());
-                left.unwrap_parent().set_color(Color::Black);
-                match is_child.clone() {
-                    Child::Left => right.unwrap_right_child().set_color(Color::Black),
-                    Child::Right => right.unwrap_left_child().set_color(Color::Black),
+                sibling.set_color(
+                    node.unwrap_parent().color());
+                node.unwrap_parent().set_color(Color::Black);
+                match node_is_child.clone() {
+                    Child::Left => sibling.unwrap_right_child().set_color(Color::Black),
+                    Child::Right => sibling.unwrap_left_child().set_color(Color::Black),
                 }
-                self.rotate(left.unwrap_parent(), &rotation.clone());
+                self.rotate(node.unwrap_parent(), &rotation.clone());
                 self.root.clone()
             }
         }
