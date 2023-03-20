@@ -406,10 +406,12 @@ impl<T> RedBlackTree<T>
                     rotation,
                     child.unwrap(),
                 );
-            } else if n.color() == Color::Red {
-                n.set_color(Color::Black);
-                break 
-            }
+            } else { 
+                if n.color() == Color::Red {
+                    n.set_color(Color::Black);
+                }
+                break;
+            }; 
         }
         if self.root.is_some() {
             self.root.as_mut().unwrap().set_color(Color::Black);
