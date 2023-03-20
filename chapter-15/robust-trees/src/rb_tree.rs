@@ -380,7 +380,7 @@ impl<T> RedBlackTree<T>
 
     fn delete_fixup(&mut self, node: Tree<T>) {
         let mut node = node.clone();
-        while let Some(n) = node.clone() {
+        while let Some(mut n) = node.clone() {
             if n.id() != self.root.as_ref().unwrap().id()
                 && n.color() == Color::Black
             {
@@ -402,7 +402,10 @@ impl<T> RedBlackTree<T>
                     rotation,
                     child.unwrap(),
                 );
-            } else { break }
+            } else if n.color() == Color::Red {
+                n.set_color(Color::Black);
+                break 
+            }
         }
         if self.root.is_some() {
             self.root.as_mut().unwrap().set_color(Color::Black);
