@@ -100,7 +100,10 @@ mod tests {
         let mut rng = thread_rng();
         let values_range = Uniform::new_inclusive(-(VALUES_COUNT / 2), VALUES_COUNT / 2);
         let mut result: Vec<i32> = Vec::with_capacity(VALUES_COUNT.try_into().unwrap());
-        for _ in 1..=1000 {
+        for i in 1..=1000 {
+            if i % 100 == 0 {
+                println!("step = {}", i);
+            }
             let mut rb_tree = RedBlackTree::new();
             let values: Vec<i32> = values_range
                 .sample_iter(&mut rng)
@@ -167,7 +170,10 @@ mod tests {
         let values_range = Uniform::new_inclusive(-(VALUES_COUNT / 2), VALUES_COUNT / 2);
         let mut result: Vec<i32> = Vec::with_capacity(VALUES_COUNT.try_into().unwrap());
 
-        for _ in 1..1000 {
+        for i in 1..=1000 {
+            if i % 100 == 0 {
+                println!("step = {}", i);
+            }
             run_delete_test(rng.clone(), values_range, &mut result);
             result.clear();
         }
@@ -225,7 +231,10 @@ mod tests {
         let values_range = Uniform::new_inclusive(-(VALUES_COUNT / 2), VALUES_COUNT / 2);
         let mut result: Vec<i32> = Vec::with_capacity(VALUES_COUNT.try_into().unwrap());
 
-        for _ in 1..=100000 {
+        for i in 1..=1000 {
+            if i % 100 == 0 {
+                println!("step = {}", i);
+            }
             run_clear_rbtree(rng.clone(), values_range, &mut result);
         }
     }
@@ -257,5 +266,6 @@ mod tests {
         });
         debug!("result = {:?}", result);
         assert!(result.is_empty());
+        assert_eq!(result.len(), rb_tree.len());
     }
 }
