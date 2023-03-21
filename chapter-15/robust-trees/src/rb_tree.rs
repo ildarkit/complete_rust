@@ -33,24 +33,24 @@ impl<T> RedBlackTree<T>
 
         self.root = if let Some(root) = self.root.take() {
             parent = Self::find_parent(
-                Some(root.clone()),
-                new_node.clone()
+                &Some(root.clone()),
+                &new_node
             );
-            Self::to_node(root)
+            Self::to_node(&root)
         } else { None };
         
         if self.root.is_none() {
-            self.root = Self::to_node(new_node.clone());
+            self.root = Self::to_node(&new_node);
         } else {
-            new_node.set_parent(Self::to_node(parent.clone()));
+            new_node.set_parent(Self::to_node(&parent));
             if new_node.clone() < parent.clone() {
-                parent.set_left_child(Self::to_node(new_node.clone()));
+                parent.set_left_child(Self::to_node(&new_node));
             } else {
-                parent.set_right_child(Self::to_node(new_node.clone()));
+                parent.set_right_child(Self::to_node(&new_node));
             }
         }
         debug!("Inserted node:\n {:#?}", new_node.clone());
-        self.insert_fixup(Self::to_node(new_node.clone()));
+        self.insert_fixup(&mut Self::to_node(&new_node));
         debug!("Fixed node:\n {:#?}", new_node.clone());
     }
 
@@ -70,7 +70,7 @@ impl<T> RedBlackTree<T>
         let mut current = self.root.clone();
         while let Some(node) = current.clone() {
             if node.clone() == value.clone() {
-                return Self::to_node(node.clone());
+                return Self::to_node(&node);
             }
             if value.clone() < node {
                 current = node.left_child();
@@ -107,27 +107,27 @@ impl<T> RedBlackTree<T>
         BareTree::new(id, key)
     }
 
-    fn to_node(node: BareTree<T>) -> Tree<T> {
-        Some(node)
+    fn to_node(node: &BareTree<T>) -> Tree<T> {
+        Some(node.clone())
     }
 
-    fn find_parent(current: Tree<T>, new_node: BareTree<T>) -> BareTree<T> {
+    fn find_parent(current: &Tree<T>, new_node: &BareTree<T>) -> BareTree<T> {
         let mut parent = Default::default();
         let mut current = current.clone();
-        while let Some(ref node) = current.clone() {
+        while let Some(ref node) = current {
             parent = node.clone();
-            if new_node.clone() < node.clone() {
+            if new_node < node {
                 current = node.left_child();
             } else {
                 current = node.right_child();
             }
         }
-        parent.clone()
+        parent
     }
 
-    fn insert_fixup(&mut self, inserted: Tree<T>) {
+    fn insert_fixup(&mut self, inserted: &Tree<T>) {
         let mut current = inserted.clone();
-        while let Some(node) = current.clone() {
+        while let Some(node) = current {
             if node.color() == Color::Black {
                 break;
             }
@@ -138,9 +138,11 @@ impl<T> RedBlackTree<T>
             };
             match color {
                 Color::Red => {
-                    let child = Self::node_is_child(node.clone()); 
-                    current = self
-                        .insert_fixup_subtree(Self::to_node(node.clone()), &child.unwrap());
+                    let child = Self::node_is_child(&node); 
+                    current = self.insert_fixup_subtree(
+                        &mut Self::to_node(&node),
+                        &child.unwrap()
+                    );
                 },
                 Color::Black => break,
             }
@@ -148,7 +150,7 @@ impl<T> RedBlackTree<T>
         self.root.as_mut().unwrap().set_color(Color::Black);
     }
 
-    fn node_is_child(node: BareTree<T>) -> Option<Child> {
+    fn node_is_child(node: &BareTree<T>) -> Option<Child> {
         let parent = node.parent();
         match parent {
             Some(ref p) => {
@@ -165,14 +167,14 @@ impl<T> RedBlackTree<T>
         }
     }
 
-    fn insert_fixup_subtree(&mut self, current: Tree<T>, child: &Child)
+    fn insert_fixup_subtree(&mut self, current: &Tree<T>, child: &Child)
         -> Tree<T>
     {
-        let mut uncle = Self::find_uncle(current.clone());
+        let mut uncle = Self::find_uncle(&current);
         let mut current = current.clone();
 
         let mut parent = current.as_ref().unwrap().unwrap_parent();
-        let uncle_is_red = Self::uncle_is_red(uncle.clone());
+        let uncle_is_red = Self::uncle_is_red(&uncle);
         if uncle_is_red {
             parent.set_color(Color::Black);
             uncle.as_mut().unwrap().set_color(Color::Black);
@@ -180,26 +182,26 @@ impl<T> RedBlackTree<T>
             current = parent.parent();
         } else {
             let rotation = Self::get_rotation(child);
-            let parent_is_child = Self::node_is_child(parent.clone());
+            let parent_is_child = Self::node_is_child(&parent);
             if parent_is_child.is_some() && *child == parent_is_child.unwrap() {
                 let mut rotate_node = parent.unwrap_parent();
                 rotate_node.set_color(Color::Red);
                 parent.set_color(Color::Black);
-                self.rotate(rotate_node, &rotation);
+                self.rotate(&mut rotate_node, &rotation);
             } else {
-                self.rotate(parent.clone(), &rotation);
+                self.rotate(&mut parent, &rotation);
             };
-            current = Self::to_node(parent.clone());
+            current = Self::to_node(&parent);
         } 
         current
-    } 
+    }
 
-    fn find_uncle(node: Tree<T>) -> Tree<T> {
-        let parent = node.as_ref().unwrap().parent();
-        let grand_parent = match parent.clone() {
+    fn find_uncle(node: &Tree<T>) -> Tree<T> {
+        let parent = &node.as_ref().unwrap().parent();
+        let grand_parent = match parent {
             Some(p) => {
                 match p.parent() {
-                    Some(pp) => Self::to_node(pp.clone()),
+                    Some(pp) => Self::to_node(&pp),
                     None => None,
                 }
             },
@@ -208,14 +210,14 @@ impl<T> RedBlackTree<T>
         if grand_parent.is_none() {
             return None;
         }     
-        match Self::node_is_child(parent.as_ref().unwrap().clone()) {
+        match Self::node_is_child(parent.as_ref().unwrap()) {
             Some(Child::Right) => grand_parent.as_ref().unwrap().left_child(),
             Some(Child::Left) => grand_parent.as_ref().unwrap().right_child(),
             _ => None,
         }
     }
 
-    fn uncle_is_red(uncle: Tree<T>) -> bool {
+    fn uncle_is_red(uncle: &Tree<T>) -> bool {
         match uncle {
             Some(n) => n.color() == Color::Red,
             None => false, 
@@ -229,7 +231,7 @@ impl<T> RedBlackTree<T>
         }
     }
 
-    fn rotate(&mut self, mut node: BareTree<T>, rotation: &Rotation) {
+    fn rotate(&mut self, node: &mut BareTree<T>, rotation: &Rotation) {
         debug!("\nrotation = {:?}", rotation);
         debug!("\nnode = {:#?}", node);
         let (node_parent, mut new_parent, new_parent_child) = match rotation {
@@ -256,21 +258,21 @@ impl<T> RedBlackTree<T>
         debug!("\nnew_parent_child(child_child) = {:#?}", new_parent_child);
 
         if let Some(mut npc) = new_parent_child.clone() {
-            npc.set_parent(Self::to_node(node.clone()));
+            npc.set_parent(Self::to_node(&node));
         } 
         new_parent.set_parent(node_parent.clone());
         debug!("\nnode_child.p = node.p: {:#?}", new_parent);
 
-        match node_parent.clone() {
-            None => self.root = Self::to_node(new_parent.clone()),
+        match node_parent {
+            None => self.root = Self::to_node(&new_parent),
             Some(mut node_parent) => {
-                match Self::node_is_child(node.clone()) {
+                match Self::node_is_child(&node) {
                     Some(Child::Left) => {
-                        node_parent.set_left_child(Self::to_node(new_parent.clone())); 
+                        node_parent.set_left_child(Self::to_node(&new_parent)); 
                         debug!("\nnew left child in node.p = {:#?}", node_parent);
                     }
                     Some(Child::Right) => {
-                        node_parent.set_right_child(Self::to_node(new_parent.clone()));
+                        node_parent.set_right_child(Self::to_node(&new_parent));
                         debug!("\nnew right child in node.p = {:#?}", node_parent);
                     }
                     None => { unreachable!() }
@@ -279,45 +281,45 @@ impl<T> RedBlackTree<T>
         }
         match rotation {
             Rotation::Right => {
-                new_parent.set_right_child(Self::to_node(node.clone()));
+                new_parent.set_right_child(Self::to_node(&node));
             },
             Rotation::Left => {
-                new_parent.set_left_child(Self::to_node(node.clone()));
+                new_parent.set_left_child(Self::to_node(&node));
             },
         }
-        node.set_parent(Self::to_node(new_parent.clone())); 
+        node.set_parent(Self::to_node(&new_parent)); 
         debug!("\nnew_parent(node_child) = {:#?}", new_parent);
         debug!("\nnode = {:#?}", node);
         debug!("\nnew_parent_child(child_child) = {:#?}", new_parent_child);
         debug!("\nend rotate fn");
     }
 
-    fn replace(&mut self, removable: BareTree<T>, replacement: Tree<T>) {
+    fn replace(&mut self, removable: &BareTree<T>, replacement: &mut Tree<T>) {
         let parent = removable.parent();
         match parent {
             None => self.root = replacement.clone(),
             Some(mut p) => {
                 let is_left_child = Self::node_is(
-                    removable.clone(),
-                    p.left_child()
+                    &removable,
+                    &p.left_child()
                 );
                 match is_left_child {
                     true => p.set_left_child(replacement.clone()),
                     false => {
-                        if Self::node_is(removable.clone(), p.right_child()) {
+                        if Self::node_is(&removable, &p.right_child()) {
                             p.set_right_child(replacement.clone());
                         };
                     }
                 }
             }
         }
-        if let Some(mut node) = replacement {
+        if let Some(ref mut node) = replacement {
             node.set_parent(removable.parent());
         }
     }
 
-    fn node_is(node: BareTree<T>, other: Tree<T>) -> bool {
-        match other.clone() {
+    fn node_is(node: &BareTree<T>, other: &Tree<T>) -> bool {
+        match other {
             Some(ref n) => n.id() == node.id(),
             None => false,
         }
@@ -331,26 +333,26 @@ impl<T> RedBlackTree<T>
         debug!("\nnode for delete = {:#?}", deleted);
         let mut node_color = deleted.color();
 
-        let replaced = match Self::get_if_one_child(deleted.clone()) {
+        let replaced = match Self::get_if_one_child(&deleted) {
             Some(child) => {
-                let child = Self::to_node(child.clone());
-                self.replace(deleted.clone(), child.clone());
+                let mut child = Self::to_node(&child);
+                self.replace(&deleted, &mut child);
                 child
             }
             // node has two or no childrens
             None => {
-                let replace = match Self::tree_minimum(deleted.right_child()) {
+                let replace = match Self::tree_minimum(&deleted.right_child()) {
                     Some(replace) => {
-                        let replace_child = replace.right_child();
+                        let mut replace_child = replace.right_child();
                         debug!("\nreplace = {:#?}", replace);
                         node_color = replace.color();
                         deleted.set_key(replace.key());
                         debug!("\nreplace node child = {:#?}", replace_child);
-                        self.replace(replace.clone(), replace_child.clone());
+                        self.replace(&replace, &mut replace_child);
                         replace_child
                     }
                     None => {
-                        self.replace(deleted.clone(), None);
+                        self.replace(&deleted, &mut None);
                         None
                     }
                 };
@@ -358,13 +360,13 @@ impl<T> RedBlackTree<T>
             }
         };
         if node_color == Color::Black {
-            self.delete_fixup(replaced.clone());
+            self.delete_fixup(&replaced);
         }
         self.length -=1;
         true
     }
 
-    fn get_if_one_child(node: BareTree<T>) -> Tree<T> {
+    fn get_if_one_child(node: &BareTree<T>) -> Tree<T> {
         if node.left_child().is_none() {
             node.right_child()
         } else if node.right_child().is_none() {
@@ -372,7 +374,7 @@ impl<T> RedBlackTree<T>
         } else { None }
     }
 
-    fn tree_minimum(node: Tree<T>) -> Tree<T> {
+    fn tree_minimum(node: &Tree<T>) -> Tree<T> {
         let mut node = node.clone();
         let mut result = None;
         while let Some(n) = node.clone() {
@@ -382,13 +384,13 @@ impl<T> RedBlackTree<T>
         result
     }
 
-    fn delete_fixup(&mut self, node: Tree<T>) {
+    fn delete_fixup(&mut self, node: &Tree<T>) {
         let mut node = node.clone();
         while let Some(mut n) = node.clone() {
             if n.id() != self.root.as_ref().unwrap().id()
                 && n.color() == Color::Black
             {
-                let child = Self::node_is_child(n.clone());
+                let child = Self::node_is_child(&n);
                 let (sibling, rotation) =
                     match child.clone() {
                         Some(Child::Left) => {
@@ -402,9 +404,9 @@ impl<T> RedBlackTree<T>
                         None => { unreachable!() },
                     };
                 node = self.delete_fixup_subtree(
-                    (n.clone(), sibling.clone()),
-                    rotation,
-                    child.unwrap(),
+                    &n, &sibling,
+                    &rotation,
+                    &child.unwrap(),
                 );
             } else { 
                 if n.color() == Color::Red {
@@ -418,16 +420,17 @@ impl<T> RedBlackTree<T>
         }
     }
 
-    fn delete_fixup_subtree(&mut self, siblings: (BareTree<T>, Tree<T>),
-        rotation: Rotation, node_is_child: Child) -> Tree<T>
+    fn delete_fixup_subtree(&mut self, node: &BareTree<T>, sibling: &Tree<T>,
+        rotation: &Rotation, node_is_child: &Child) -> Tree<T>
     {
-        let (node, mut sibling) = siblings;
+        let node = node.clone();
+        let mut sibling = sibling.clone();
         let mut parent = node.unwrap_parent();
         if sibling.is_some() && sibling.as_ref().unwrap().color() == Color::Red {
-            sibling.unwrap().set_color(Color::Black);
+            sibling.as_mut().unwrap().set_color(Color::Black);
             parent.set_color(Color::Red);
-            self.rotate(parent.clone(), &rotation.clone());
-            sibling = match node_is_child.clone() {
+            self.rotate(&mut parent, &rotation.clone());
+            sibling = match node_is_child {
                 Child::Left => parent.right_child(),
                 Child::Right => parent.left_child(),
             };
@@ -450,22 +453,22 @@ impl<T> RedBlackTree<T>
                     &vec![distant_nephew.clone()],
                     &Color::Black
                 );
-                 
+                
                 if distant_black {
                     close_nephew.as_mut().unwrap().set_color(Color::Black);
                     sibling.as_mut().unwrap().set_color(Color::Red);
-                    self.rotate(sibling.unwrap().clone(), &!rotation.clone());
-                    match node_is_child.clone() {
+                    self.rotate(&mut sibling.unwrap(), &!rotation.clone());
+                    match node_is_child {
                         Child::Left => sibling = node.unwrap_parent().right_child(),
                         Child::Right => sibling = node.unwrap_parent().left_child(),
                     }
-                } else if let Some(mut distant_nephew) = distant_nephew{
+                } else if let Some(mut distant_nephew) = distant_nephew {
                     distant_nephew.set_color(Color::Black);
                 }
                 sibling.unwrap().set_color(
                     node.unwrap_parent().color());
                 node.unwrap_parent().set_color(Color::Black); 
-                self.rotate(node.unwrap_parent(), &rotation.clone());
+                self.rotate(&mut node.unwrap_parent(), &rotation.clone());
                 self.root.clone()
             }
         }

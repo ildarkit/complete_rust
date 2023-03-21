@@ -141,15 +141,15 @@ impl<T> BareTree<T>
     }
 
     pub fn set_left_child(&mut self, node: Tree<T>) {
-        self.node.borrow_mut().left = node.clone();
+        self.node.borrow_mut().left = node;
     }
 
     pub fn set_right_child(&mut self, node: Tree<T>) {
-        self.node.borrow_mut().right = node.clone();
+        self.node.borrow_mut().right = node;
     }
 
     pub fn set_parent(&mut self, node: Tree<T>) {
-        self.node.borrow_mut().parent = node.clone();
+        self.node.borrow_mut().parent = node;
     }
 
     pub fn left_child(&self) -> Tree<T> {
