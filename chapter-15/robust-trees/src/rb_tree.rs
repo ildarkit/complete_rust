@@ -147,7 +147,7 @@ impl<T> RedBlackTree<T>
                 Color::Black => break,
             }
         }
-        self.root.as_mut().unwrap().set_color(Color::Black);
+        self.root.as_ref().unwrap().set_color(Color::Black);
     }
 
     fn node_is_child(node: &BareTree<T>) -> Option<Child> {
@@ -170,14 +170,14 @@ impl<T> RedBlackTree<T>
     fn insert_fixup_subtree(&mut self, current: &Tree<T>, child: &Child)
         -> Tree<T>
     {
-        let mut uncle = Self::find_uncle(&current);
+        let uncle = Self::find_uncle(&current);
         let mut current = current.clone();
 
         let mut parent = current.as_ref().unwrap().unwrap_parent();
         let uncle_is_red = Self::uncle_is_red(&uncle);
         if uncle_is_red {
             parent.set_color(Color::Black);
-            uncle.as_mut().unwrap().set_color(Color::Black);
+            uncle.as_ref().unwrap().set_color(Color::Black);
             parent.unwrap_parent().set_color(Color::Red);
             current = parent.parent();
         } else {
@@ -413,7 +413,7 @@ impl<T> RedBlackTree<T>
             }; 
         }
         if self.root.is_some() {
-            self.root.as_mut().unwrap().set_color(Color::Black);
+            self.root.as_ref().unwrap().set_color(Color::Black);
         }
     }
 
@@ -424,7 +424,7 @@ impl<T> RedBlackTree<T>
         let mut sibling = sibling.clone();
         let mut parent = node.unwrap_parent();
         if sibling.is_some() && sibling.as_ref().unwrap().color() == Color::Red {
-            sibling.as_mut().unwrap().set_color(Color::Black);
+            sibling.as_ref().unwrap().set_color(Color::Black);
             parent.set_color(Color::Red);
             self.rotate(&mut parent, &rotation.clone());
             sibling = match node_is_child {
@@ -444,7 +444,7 @@ impl<T> RedBlackTree<T>
                 node.parent()
             }
             true => {
-                let mut close_nephew = nephews[0].clone();
+                let close_nephew = nephews[0].clone();
                 let distant_nephew = nephews[1].clone();
                 let distant_black = Self::any_colors(
                     &vec![distant_nephew.clone()],
@@ -452,8 +452,8 @@ impl<T> RedBlackTree<T>
                 );
                 
                 if distant_black {
-                    close_nephew.as_mut().unwrap().set_color(Color::Black);
-                    sibling.as_mut().unwrap().set_color(Color::Red);
+                    close_nephew.as_ref().unwrap().set_color(Color::Black);
+                    sibling.as_ref().unwrap().set_color(Color::Red);
                     self.rotate(&mut sibling.unwrap(), &!rotation.clone());
                     match node_is_child {
                         Child::Left => sibling = node.unwrap_parent().right_child(),
