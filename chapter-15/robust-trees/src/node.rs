@@ -136,19 +136,19 @@ impl<T> BareTree<T>
         self.node.borrow().key
     }
 
-    pub(crate) fn set_key(&mut self, key: T) {
+    pub(crate) fn set_key(&self, key: T) {
         self.node.borrow_mut().key = key;
     }
 
-    pub(crate) fn set_left_child(&mut self, node: Tree<T>) {
+    pub(crate) fn set_left_child(&self, node: Tree<T>) {
         self.node.borrow_mut().left = node;
     }
 
-    pub(crate) fn set_right_child(&mut self, node: Tree<T>) {
+    pub(crate) fn set_right_child(&self, node: Tree<T>) {
         self.node.borrow_mut().right = node;
     }
 
-    pub(crate) fn set_parent(&mut self, node: Tree<T>) {
+    pub(crate) fn set_parent(&self, node: Tree<T>) {
         self.node.borrow_mut().parent = node;
     }
 
@@ -184,7 +184,7 @@ impl<T> BareTree<T>
         self.node.borrow().color.clone()
     }
 
-    pub(crate) fn set_color(&mut self, color: Color) {
+    pub(crate) fn set_color(&self, color: Color) {
         self.node.borrow_mut().color = color;
     }
 
@@ -192,7 +192,7 @@ impl<T> BareTree<T>
         self.node.borrow()
     }
 
-    pub(crate) fn clear(&mut self) {
+    pub(crate) fn clear(&self) {
         let mut node = self.node.borrow_mut();
         node.parent.take();
         node.left.take();
