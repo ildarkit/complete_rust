@@ -191,4 +191,11 @@ impl<T> BareTree<T>
     pub fn borrow(&self) -> Ref<'_, Node<T>> {
         self.node.borrow()
     }
+
+    pub fn clear(&mut self) {
+        let mut node = self.node.borrow_mut();
+        node.parent.take();
+        node.left.take();
+        node.right.take();
+    }
 }

@@ -294,7 +294,7 @@ impl<T> RedBlackTree<T>
         debug!("\nend rotate fn");
     }
 
-    fn replace(&mut self, removable: &BareTree<T>, replacement: &mut Tree<T>) {
+    fn replace(&mut self, removable: &mut BareTree<T>, replacement: &mut Tree<T>) {
         let parent = removable.parent();
         match parent {
             None => self.root = replacement.clone(),
@@ -305,17 +305,14 @@ impl<T> RedBlackTree<T>
                 );
                 match is_left_child {
                     true => p.set_left_child(replacement.clone()),
-                    false => {
-                        if Self::node_is(&removable, &p.right_child()) {
-                            p.set_right_child(replacement.clone());
-                        };
-                    }
+                    false => p.set_right_child(replacement.clone()),
                 }
             }
         }
         if let Some(ref mut node) = replacement {
             node.set_parent(removable.parent());
         }
+        removable.clear();
     }
 
     fn node_is(node: &BareTree<T>, other: &Tree<T>) -> bool {
@@ -323,7 +320,7 @@ impl<T> RedBlackTree<T>
             Some(ref n) => n.id() == node.id(),
             None => false,
         }
-    } 
+    }
 
     pub fn delete(&mut self, value: T) -> bool {
         let mut deleted = match self.find_node(value) {
@@ -336,23 +333,23 @@ impl<T> RedBlackTree<T>
         let replaced = match Self::get_if_one_child(&deleted) {
             Some(child) => {
                 let mut child = Self::to_node(&child);
-                self.replace(&deleted, &mut child);
+                self.replace(&mut deleted, &mut child);
                 child
             }
             // node has two or no childrens
             None => {
                 let replace = match Self::tree_minimum(&deleted.right_child()) {
-                    Some(replace) => {
+                    Some(mut replace) => {
                         let mut replace_child = replace.right_child();
                         debug!("\nreplace = {:#?}", replace);
                         node_color = replace.color();
                         deleted.set_key(replace.key());
                         debug!("\nreplace node child = {:#?}", replace_child);
-                        self.replace(&replace, &mut replace_child);
+                        self.replace(&mut replace, &mut replace_child);
                         replace_child
                     }
                     None => {
-                        self.replace(&deleted, &mut None);
+                        self.replace(&mut deleted, &mut None);
                         None
                     }
                 };
