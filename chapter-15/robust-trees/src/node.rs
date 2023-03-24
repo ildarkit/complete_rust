@@ -62,7 +62,7 @@ impl<T> Node<T>
     where
         T: Default + Copy + Clone + fmt::Debug
 {
-    pub fn new(id: u32, key: T) -> Self {
+    pub(crate) fn new(id: u32, key: T) -> Self {
         Self {
             id,
             key,
