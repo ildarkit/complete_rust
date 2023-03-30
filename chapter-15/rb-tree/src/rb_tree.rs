@@ -398,34 +398,35 @@ impl<R, T, U> RedBlackTree<'_, R, T, U>
         debug!("\nend rotate fn");
     }
 
-    // fn replace(&mut self, removable: &U, replacement: &Option<U>) {
-    //     let parent = removable.parent();
-    //     match parent {
-    //         None => self.root = replacement.clone(),
-    //         Some(p) => {
-    //             let is_left_child = Self::node_is(
-    //                 &removable,
-    //                 &p.left_child()
-    //             );
-    //             match is_left_child {
-    //                 true => p.set_left_child(replacement.clone()),
-    //                 false => p.set_right_child(replacement.clone()),
-    //             }
-    //         }
-    //     }
-    //     if let Some(ref mut node) = replacement {
-    //         node.set_parent(removable.parent());
-    //     }
-    //     removable.clear();
-    // }
-    //
-    // fn node_is(node: &BareTree<T>, other: &Tree<T>) -> bool {
-    //     match other {
-    //         Some(ref n) => n.id() == node.id(),
-    //         None => false,
-    //     }
-    // }
-    //
+    fn replace(&mut self, repo: &mut R, removable: &U, replacement: &Option<U>) {
+        let parent_id = repo.get_parent(removable).map(|p| *p.id());
+        let removable_left = parent_id.as_ref().map(|p| {
+            if let Some(l) = repo.get_left(p) {
+                Self::node_is(removable, &Some(*l.id()))
+            } else { false }
+        });
+        match removable_left {
+            None => self.root = replacement.clone(),
+            Some(true) => {
+                parent_id.as_ref().map(|p| {
+                    repo.get_mut(p).unwrap().set_left_child(replacement);
+                });
+            }
+            Some(false) => {
+                parent_id.as_ref().map(|p| {
+                    repo.get_mut(&p).unwrap().set_right_child(replacement);
+                });
+            }
+        }
+        if let Some(r) = replacement {
+            repo.get_mut(&r).unwrap().set_parent(&parent_id);
+        }
+    }
+
+    fn node_is(node: &U, other: &Option<U>) -> bool {
+        other.map_or(false, |n| n == *node)
+    }
+
     pub fn delete(&mut self, repo: &mut R, value: T) -> Option<U> {
         let mut deleted = self.find_node(repo, value)
             .map(|node| {
@@ -435,7 +436,7 @@ impl<R, T, U> RedBlackTree<'_, R, T, U>
 
         let replaced = match Self::get_if_one_child(repo, &deleted.id) {
             Some(child_id) => {
-                self.replace(repo, &deleted.id, &child_id);
+                self.replace(repo, &deleted.id, &Some(child_id));
                 Some(child_id)
             }
             // node has two or no childrens
@@ -451,13 +452,15 @@ impl<R, T, U> RedBlackTree<'_, R, T, U>
                         repo.get_mut(&deleted.id).map(|node| {
                             node.set_key(replace_key);
                         });
-                        let replace_child_id = repo.get_right(&replace_id).map(|node| *node.id());
+                        let replace_child_id = repo
+                            .get_right(&replace_id)
+                            .map(|node| *node.id());
                         debug!("\nreplace node child = {:#?}", replace_child_id);
-                        self.replace(&replace_id, &replace_child_id);
+                        self.replace(repo, &replace_id, &replace_child_id);
                         replace_child_id
                     }
                     None => {
-                        self.replace(&deleted_id, &None);
+                        self.replace(repo, &deleted.id, &None);
                         None
                     }
                 }
