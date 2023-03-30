@@ -398,7 +398,7 @@ impl<R, T, U> RedBlackTree<'_, R, T, U>
         debug!("\nend rotate fn");
     }
 
-    // fn replace(&mut self, removable: &mut BareTree<T>, replacement: &mut Tree<T>) {
+    // fn replace(&mut self, removable: &U, replacement: &Option<U>) {
     //     let parent = removable.parent();
     //     match parent {
     //         None => self.root = replacement.clone(),
@@ -426,66 +426,69 @@ impl<R, T, U> RedBlackTree<'_, R, T, U>
     //     }
     // }
     //
-    // pub fn delete(&mut self, value: T) -> bool {
-    //     let mut deleted = match self.find_node(value) {
-    //         Some(node) => node.clone(),
-    //         None => return false,
-    //     };
-    //     debug!("\nnode for delete = {:#?}", deleted);
-    //     let mut node_color = deleted.color();
-    //
-    //     let replaced = match Self::get_if_one_child(&deleted) {
-    //         Some(child) => {
-    //             let mut child = Self::to_node(&child);
-    //             self.replace(&mut deleted, &mut child);
-    //             child
-    //         }
-    //         // node has two or no childrens
-    //         None => {
-    //             let replace = match Self::tree_minimum(&deleted.right_child()) {
-    //                 Some(mut replace) => {
-    //                     let mut replace_child = replace.right_child();
-    //                     debug!("\nreplace = {:#?}", replace);
-    //                     node_color = replace.color();
-    //                     deleted.set_key(replace.key());
-    //                     debug!("\nreplace node child = {:#?}", replace_child);
-    //                     self.replace(&mut replace, &mut replace_child);
-    //                     replace_child
-    //                 }
-    //                 None => {
-    //                     self.replace(&mut deleted, &mut None);
-    //                     None
-    //                 }
-    //             };
-    //             replace
-    //         }
-    //     };
-    //     if node_color == Color::Black {
-    //         self.delete_fixup(&replaced);
-    //     }
-    //     self.length -=1;
-    //     true
-    // }
-    //
-    // fn get_if_one_child(node: &BareTree<T>) -> Tree<T> {
-    //     if node.left_child().is_none() {
-    //         node.right_child()
-    //     } else if node.right_child().is_none() {
-    //         node.left_child()
-    //     } else { None }
-    // }
-    //
-    // fn tree_minimum(node: &Tree<T>) -> Tree<T> {
-    //     let mut node = node.clone();
-    //     let mut result = None;
-    //     while let Some(n) = node.clone() {
-    //         result = node.clone();
-    //         node = n.left_child();
-    //     }
-    //     result
-    // }
-    //
-    // fn delete_fixup(&mut self, node: &Tree<T>) {
+    pub fn delete(&mut self, repo: &mut R, value: T) -> Option<U> {
+        let mut deleted = self.find_node(repo, value)
+            .map(|node| {
+                debug!("\nnode for delete = {:#?}", node);
+                NodeColor{id: *node.id(), color: *node.color()}
+            })?;
+
+        let replaced = match Self::get_if_one_child(repo, &deleted.id) {
+            Some(child_id) => {
+                self.replace(repo, &deleted.id, &child_id);
+                Some(child_id)
+            }
+            // node has two or no childrens
+            None => {
+                let right_child = repo.get_right(&deleted.id).map(|n| *n.id());
+                match Self::tree_minimum(repo, right_child) {
+                    Some(replace_id) => {
+                        let replace_key = repo.get(&replace_id).map(|replace| {
+                            debug!("\nreplace = {:#?}", replace);
+                            deleted.color = *replace.color();
+                            replace.key()
+                        }).unwrap();
+                        repo.get_mut(&deleted.id).map(|node| {
+                            node.set_key(replace_key);
+                        });
+                        let replace_child_id = repo.get_right(&replace_id).map(|node| *node.id());
+                        debug!("\nreplace node child = {:#?}", replace_child_id);
+                        self.replace(&replace_id, &replace_child_id);
+                        replace_child_id
+                    }
+                    None => {
+                        self.replace(&deleted_id, &None);
+                        None
+                    }
+                }
+            }
+        };
+        if deleted.color == Color::Black {
+            self.delete_fixup(&replaced);
+        }
+        self.dec_len();
+        Some(deleted.id)
+    }
+
+    fn get_if_one_child(repo: &R, node: &U) -> Option<U> {
+        if repo.get_left(node).is_none() {
+            repo.get_right(node).map(|node| *node.id())
+        } else if repo.get_right(node).is_none() {
+            repo.get_left(node).map(|node| *node.id())
+        } else { None }
+    }
+
+    fn tree_minimum(repo: &R, node: Option<U>) -> Option<U> {
+        let mut node = repo.get(&node?);
+        let mut result = None;
+        while let Some(n) = node {
+            result = Some(n.id());
+            node = repo.get_left(n.id());
+        }
+        result.cloned()
+    }
+
+    // fn delete_fixup(&mut self, node: &Option<U>) {
     //     let mut node = node.clone();
     //     while let Some(n) = node.clone() {
     //         if n.id() != self.root.as_ref().unwrap().id()
