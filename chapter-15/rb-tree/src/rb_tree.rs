@@ -76,7 +76,7 @@ impl<R, T, U> RedBlackTree<'_, R, T, U>
         T: Eq + Hash + Default + PartialEq + PartialOrd + Copy + Clone + fmt::Debug,
         U: Eq + Hash + Default + fmt::Debug + Copy + PartialOrd + AddAssign<DefaultId>,
         for<'a> R: Repository<T, U> + Default + 'a,
-        R::Output: Operations<T, U> + fmt::Debug + PartialOrd,
+        R::Output: Operations<T, U> + fmt::Debug + PartialOrd + Copy + Clone,
 {
     pub fn new() -> Self {
         Self {
@@ -131,6 +131,46 @@ impl<R, T, U> RedBlackTree<'_, R, T, U>
 
     fn dec_len(&mut self) {
         self.length -= 1;
+    }
+
+    pub fn find(&self, repo: &R, value: T,
+        mut callback: impl FnMut(Option<R::Output>) -> ())
+    {
+        let node = self.find_node(repo, value);
+        callback(node);
+    }
+
+    fn find_node(&self, repo: &R, value: T) -> Option<R::Output> {
+        let mut current = self.root.clone();
+        while let Some(ref node_id) = current {
+            let node = repo.get(node_id)?;
+            if node.key() == value {
+                return Some(node.clone());
+            }
+            if value < node.key() {
+                current = node.left_child();
+            } else {
+                current = node.right_child();
+            }
+        }
+        None
+    }
+
+    pub fn walk_in_order(&self, repo: &R,
+        mut callback: impl FnMut(&R::Output) -> ())
+    {
+        self.go_walk_in_order(repo, &self.root, &mut callback);
+    }
+
+    fn go_walk_in_order(&self, repo: &R, node: &Option<U>,
+        callback: &mut impl FnMut(&R::Output) -> ())
+    {
+        if let Some(n) = node {
+            let n = repo.get(n).unwrap();
+            self.go_walk_in_order(repo, &n.left_child(), callback);
+            callback(n);
+            self.go_walk_in_order(repo, &n.right_child(), callback);
+        }
     }
 
     fn find_parent(&self, repo: &R, current: &Option<U>, new_node: &U) -> Option<U> {
@@ -356,5 +396,202 @@ impl<R, T, U> RedBlackTree<'_, R, T, U>
             debug!("\nnode = {:#?}", node);
         });
         debug!("\nend rotate fn");
-    } 
+    }
+
+    // fn replace(&mut self, removable: &mut BareTree<T>, replacement: &mut Tree<T>) {
+    //     let parent = removable.parent();
+    //     match parent {
+    //         None => self.root = replacement.clone(),
+    //         Some(p) => {
+    //             let is_left_child = Self::node_is(
+    //                 &removable,
+    //                 &p.left_child()
+    //             );
+    //             match is_left_child {
+    //                 true => p.set_left_child(replacement.clone()),
+    //                 false => p.set_right_child(replacement.clone()),
+    //             }
+    //         }
+    //     }
+    //     if let Some(ref mut node) = replacement {
+    //         node.set_parent(removable.parent());
+    //     }
+    //     removable.clear();
+    // }
+    //
+    // fn node_is(node: &BareTree<T>, other: &Tree<T>) -> bool {
+    //     match other {
+    //         Some(ref n) => n.id() == node.id(),
+    //         None => false,
+    //     }
+    // }
+    //
+    // pub fn delete(&mut self, value: T) -> bool {
+    //     let mut deleted = match self.find_node(value) {
+    //         Some(node) => node.clone(),
+    //         None => return false,
+    //     };
+    //     debug!("\nnode for delete = {:#?}", deleted);
+    //     let mut node_color = deleted.color();
+    //
+    //     let replaced = match Self::get_if_one_child(&deleted) {
+    //         Some(child) => {
+    //             let mut child = Self::to_node(&child);
+    //             self.replace(&mut deleted, &mut child);
+    //             child
+    //         }
+    //         // node has two or no childrens
+    //         None => {
+    //             let replace = match Self::tree_minimum(&deleted.right_child()) {
+    //                 Some(mut replace) => {
+    //                     let mut replace_child = replace.right_child();
+    //                     debug!("\nreplace = {:#?}", replace);
+    //                     node_color = replace.color();
+    //                     deleted.set_key(replace.key());
+    //                     debug!("\nreplace node child = {:#?}", replace_child);
+    //                     self.replace(&mut replace, &mut replace_child);
+    //                     replace_child
+    //                 }
+    //                 None => {
+    //                     self.replace(&mut deleted, &mut None);
+    //                     None
+    //                 }
+    //             };
+    //             replace
+    //         }
+    //     };
+    //     if node_color == Color::Black {
+    //         self.delete_fixup(&replaced);
+    //     }
+    //     self.length -=1;
+    //     true
+    // }
+    //
+    // fn get_if_one_child(node: &BareTree<T>) -> Tree<T> {
+    //     if node.left_child().is_none() {
+    //         node.right_child()
+    //     } else if node.right_child().is_none() {
+    //         node.left_child()
+    //     } else { None }
+    // }
+    //
+    // fn tree_minimum(node: &Tree<T>) -> Tree<T> {
+    //     let mut node = node.clone();
+    //     let mut result = None;
+    //     while let Some(n) = node.clone() {
+    //         result = node.clone();
+    //         node = n.left_child();
+    //     }
+    //     result
+    // }
+    //
+    // fn delete_fixup(&mut self, node: &Tree<T>) {
+    //     let mut node = node.clone();
+    //     while let Some(n) = node.clone() {
+    //         if n.id() != self.root.as_ref().unwrap().id()
+    //             && n.color() == Color::Black
+    //         {
+    //             let child = Self::node_is_child(&n);
+    //             let (sibling, rotation) =
+    //                 match child.clone() {
+    //                     Some(Child::Left) => {
+    //                         (n.unwrap_parent().right_child(),
+    //                             Rotation::Left)
+    //                     },
+    //                     Some(Child::Right) => {
+    //                         (n.unwrap_parent().left_child(),
+    //                             Rotation::Right)
+    //                     },
+    //                     None => { unreachable!() },
+    //                 };
+    //             node = self.delete_fixup_subtree(
+    //                 &n, &sibling,
+    //                 &rotation,
+    //                 &child.unwrap(),
+    //             );
+    //         } else { 
+    //             if n.color() == Color::Red {
+    //                 n.set_color(Color::Black);
+    //             }
+    //             break;
+    //         }; 
+    //     }
+    //     if self.root.is_some() {
+    //         self.root.as_ref().unwrap().set_color(Color::Black);
+    //     }
+    // }
+    //
+    // fn delete_fixup_subtree(&mut self, node: &BareTree<T>, sibling: &Tree<T>,
+    //     rotation: &Rotation, node_is_child: &Child) -> Tree<T>
+    // {
+    //     let node = node.clone();
+    //     let mut sibling = sibling.clone();
+    //     let mut parent = node.unwrap_parent();
+    //     if sibling.is_some() && sibling.as_ref().unwrap().color() == Color::Red {
+    //         sibling.as_ref().unwrap().set_color(Color::Black);
+    //         parent.set_color(Color::Red);
+    //         self.rotate(&mut parent, &rotation.clone());
+    //         sibling = match node_is_child {
+    //             Child::Left => parent.right_child(),
+    //             Child::Right => parent.left_child(),
+    //         };
+    //     }
+    //
+    //     let nephews = Self::childrens(&sibling, &node_is_child);
+    //     let red_nephews = Self::any_colors(&nephews, &Color::Red);
+    //
+    //     match red_nephews {
+    //         false => {
+    //             if sibling.is_some() {
+    //                 sibling.unwrap().set_color(Color::Red);
+    //             }
+    //             node.parent()
+    //         }
+    //         true => {
+    //             let close_nephew = nephews[0].clone();
+    //             let distant_nephew = nephews[1].clone();
+    //             let distant_black = Self::any_colors(
+    //                 &vec![distant_nephew.clone()],
+    //                 &Color::Black
+    //             );
+    //             
+    //             if distant_black {
+    //                 close_nephew.as_ref().unwrap().set_color(Color::Black);
+    //                 sibling.as_ref().unwrap().set_color(Color::Red);
+    //                 self.rotate(&mut sibling.unwrap(), &!rotation.clone());
+    //                 match node_is_child {
+    //                     Child::Left => sibling = node.unwrap_parent().right_child(),
+    //                     Child::Right => sibling = node.unwrap_parent().left_child(),
+    //                 }
+    //             } else if let Some(distant_nephew) = distant_nephew {
+    //                 distant_nephew.set_color(Color::Black);
+    //             }
+    //             sibling.unwrap().set_color(
+    //                 node.unwrap_parent().color());
+    //             node.unwrap_parent().set_color(Color::Black); 
+    //             self.rotate(&mut node.unwrap_parent(), &rotation.clone());
+    //             self.root.clone()
+    //         }
+    //     }
+    // }
+    //
+    // fn childrens(node: &Tree<T>, first_child: &Child) -> Vec<Tree<T>> {
+    //     let (left, right) = match node {
+    //         Some(n) => (n.left_child(), n.right_child()),
+    //         None => (None, None),
+    //     };
+    //     match first_child {
+    //         Child::Left => vec![left, right],
+    //         Child::Right => vec![right, left],
+    //     }
+    // }
+    //
+    // fn any_colors(nodes: &Vec<Tree<T>>, color: &Color) -> bool {
+    //     nodes.iter()
+    //         .any(|node| {
+    //             if let Some(n) = node {
+    //                 n.color() == *color
+    //             } else { false }
+    //         })
+    // }
 }
