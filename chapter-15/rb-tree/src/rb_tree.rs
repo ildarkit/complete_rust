@@ -9,6 +9,7 @@ use crate::repo::Repository;
 
 type DefaultId = u32;
 
+#[derive(Debug, Clone)]
 struct NodeColor<U> {
     id: U,
     color: Color,
@@ -398,7 +399,8 @@ impl<R, T, U> RedBlackTree<'_, R, T, U>
         debug!("\nend rotate fn");
     }
 
-    fn replace(&mut self, repo: &mut R, removable: &U, replacement: &Option<U>) {
+    fn replace(&mut self, repo: &mut R, removable: &U, replacement: &Option<NodeColor<U>>) {
+        let replacement = replacement.as_ref().map(|r| r.id);
         let parent_id = repo.get_parent(removable).map(|p| *p.id());
         let removable_left = parent_id.as_ref().map(|p| {
             if let Some(l) = repo.get_left(p) {
@@ -409,12 +411,12 @@ impl<R, T, U> RedBlackTree<'_, R, T, U>
             None => self.root = replacement.clone(),
             Some(true) => {
                 parent_id.as_ref().map(|p| {
-                    repo.get_mut(p).unwrap().set_left_child(replacement);
+                    repo.get_mut(p).unwrap().set_left_child(&replacement);
                 });
             }
             Some(false) => {
                 parent_id.as_ref().map(|p| {
-                    repo.get_mut(&p).unwrap().set_right_child(replacement);
+                    repo.get_mut(&p).unwrap().set_right_child(&replacement);
                 });
             }
         }
@@ -435,9 +437,9 @@ impl<R, T, U> RedBlackTree<'_, R, T, U>
             })?;
 
         let replaced = match Self::get_if_one_child(repo, &deleted.id) {
-            Some(child_id) => {
-                self.replace(repo, &deleted.id, &Some(child_id));
-                Some(child_id)
+            Some(ref child) => {
+                self.replace(repo, &deleted.id, &Some(child.clone()));
+                Some(child.clone())
             }
             // node has two or no childrens
             None => {
@@ -452,12 +454,12 @@ impl<R, T, U> RedBlackTree<'_, R, T, U>
                         repo.get_mut(&deleted.id).map(|node| {
                             node.set_key(replace_key);
                         });
-                        let replace_child_id = repo
+                        let replace_child = repo
                             .get_right(&replace_id)
-                            .map(|node| *node.id());
-                        debug!("\nreplace node child = {:#?}", replace_child_id);
-                        self.replace(repo, &replace_id, &replace_child_id);
-                        replace_child_id
+                            .map(|node| NodeColor{id: *node.id(), color: *node.color()});
+                        debug!("\nreplace node child = {:#?}", replace_child);
+                        self.replace(repo, &replace_id, &replace_child);
+                        replace_child
                     }
                     None => {
                         self.replace(repo, &deleted.id, &None);
@@ -467,18 +469,24 @@ impl<R, T, U> RedBlackTree<'_, R, T, U>
             }
         };
         if deleted.color == Color::Black {
-            self.delete_fixup(&replaced);
+            self.delete_fixup(repo, &replaced);
         }
         self.dec_len();
         Some(deleted.id)
     }
 
-    fn get_if_one_child(repo: &R, node: &U) -> Option<U> {
-        if repo.get_left(node).is_none() {
-            repo.get_right(node).map(|node| *node.id())
+    fn get_if_one_child(repo: &R, node: &U) -> Option<NodeColor<U>> {
+        let child = if repo.get_left(node).is_none() {
+            repo.get_right(node)
         } else if repo.get_right(node).is_none() {
-            repo.get_left(node).map(|node| *node.id())
-        } else { None }
+            repo.get_left(node)
+        } else { None };
+        child.map(|node| {
+            NodeColor{
+                id: *node.id(),
+                color: *node.color()
+            }
+        })
     }
 
     fn tree_minimum(repo: &R, node: Option<U>) -> Option<U> {
@@ -491,42 +499,45 @@ impl<R, T, U> RedBlackTree<'_, R, T, U>
         result.cloned()
     }
 
-    // fn delete_fixup(&mut self, node: &Option<U>) {
-    //     let mut node = node.clone();
-    //     while let Some(n) = node.clone() {
-    //         if n.id() != self.root.as_ref().unwrap().id()
-    //             && n.color() == Color::Black
-    //         {
-    //             let child = Self::node_is_child(&n);
-    //             let (sibling, rotation) =
-    //                 match child.clone() {
-    //                     Some(Child::Left) => {
-    //                         (n.unwrap_parent().right_child(),
-    //                             Rotation::Left)
-    //                     },
-    //                     Some(Child::Right) => {
-    //                         (n.unwrap_parent().left_child(),
-    //                             Rotation::Right)
-    //                     },
-    //                     None => { unreachable!() },
-    //                 };
-    //             node = self.delete_fixup_subtree(
-    //                 &n, &sibling,
-    //                 &rotation,
-    //                 &child.unwrap(),
-    //             );
-    //         } else { 
-    //             if n.color() == Color::Red {
-    //                 n.set_color(Color::Black);
-    //             }
-    //             break;
-    //         }; 
-    //     }
-    //     if self.root.is_some() {
-    //         self.root.as_ref().unwrap().set_color(Color::Black);
-    //     }
-    // }
-    //
+    fn delete_fixup(&mut self, repo: &mut R, mut node: &Option<NodeColor<U>>) {
+        let black = &Color::Black;
+        while let Some(n) = node {
+            if n.id != *self.root.as_ref().unwrap()
+                && n.color == *black
+            {
+                let child = &Self::node_is_child(repo, &n.id);
+                let parent_id = &repo.get_parent(&n.id).map(|p| p.id());
+                let (sibling, rotation) =
+                    match child {
+                        Some(Child::Left) => {
+                            (parent_id.map(|p| repo.get_right(p)).flatten(),
+                                Rotation::Left)
+                        },
+                        Some(Child::Right) => {
+                            (parent_id.map(|p| repo.get_left(p)).flatten(),
+                                Rotation::Right)
+                        },
+                        None => { unreachable!() },
+                    };
+                node = self.delete_fixup_subtree(
+                    repo,
+                    &n,
+                    &sibling.map(|s| *s.id()),
+                    &rotation,
+                    &child.unwrap(),
+                );
+            } else { 
+                if n.color == !Color::Black {
+                    repo.get_mut(&n.id).map(|node| node.set_color(black));
+                }
+                break;
+            }; 
+        }
+        if let Some(ref r) = self.root {
+            repo.get_mut(r).map(|node| node.set_color(black));
+        }
+    }
+
     // fn delete_fixup_subtree(&mut self, node: &BareTree<T>, sibling: &Tree<T>,
     //     rotation: &Rotation, node_is_child: &Child) -> Tree<T>
     // {
