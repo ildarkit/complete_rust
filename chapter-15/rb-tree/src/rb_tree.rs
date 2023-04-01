@@ -479,7 +479,7 @@ impl<R, T, U> RedBlackTree<'_, R, T, U>
             self.delete_fixup(repo, &replaced);
         }
         self.dec_len();
-        Some(deleted.id)
+        repo.remove(&deleted.id).map(|n| *n.id())
     }
 
     fn get_if_one_child(repo: &R, node: &U) -> Option<NodeColor<U>> {
