@@ -54,7 +54,7 @@ pub struct Node<T, U>
 {
     id: U,
     color: Color,
-    pub key: T,
+    key: T,
     parent: Option<U>,
     left: Option<U>,
     right: Option<U>,

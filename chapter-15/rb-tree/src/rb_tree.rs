@@ -89,7 +89,7 @@ impl<R, T, U> RedBlackTree<'_, R, T, U>
         T: Eq + Hash + Default + PartialEq + PartialOrd + Copy + Clone + fmt::Debug,
         U: Eq + Hash + Default + fmt::Debug + Copy + PartialOrd + AddAssign<DefaultId>,
         for<'a> R: Repository<T, U> + Default + 'a,
-        R::Output: Operations<T, U> + fmt::Debug + PartialOrd + Copy + Clone,
+        R::Output: Operations<T, U> + fmt::Debug + PartialOrd + Clone,
 {
     pub fn new() -> Self {
         Self {

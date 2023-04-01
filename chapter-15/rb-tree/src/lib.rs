@@ -45,6 +45,7 @@ impl<T, U> Repository<T, U> for RepoNode<T, U>
 
 #[cfg(test)]
 mod tests {
+    use super::{RepoNode, Repository, Operations};
     use super::rb_tree::*;
     use rand::prelude::*;
     use rand::distributions::Uniform;
@@ -57,42 +58,44 @@ mod tests {
     }
 
     #[test]
-    fn not_found_test() {
+    fn not_found() {
+        let repo: &mut RepoNode<i32, u32> = &mut RepoNode::new();
         let mut rb_tree = RedBlackTree::new();
         let mut value: i32 = -1;
-        rb_tree.find(0, |node| {
+        rb_tree.find(repo, 0, |node| {
             if let Some(n) = node {
-                value = n.key;
+                value = n.key();
             }
         });
         assert_eq!(value, -1);
-        rb_tree.insert(1);
-        rb_tree.find(2, |node| {
+        rb_tree.insert(repo, 1);
+        rb_tree.find(repo, 2, |node| {
             if let Some(n) = node {
-                value = n.key;
+                value = n.key();
             }
         });
         assert_eq!(value, -1);
     }
 
     #[test]
-    fn found_test() {
+    fn found() {
+        let repo: &mut RepoNode<i32, u32> = &mut RepoNode::new();
         let mut rb_tree = RedBlackTree::new();
         let mut value: i32 = -1;
-        rb_tree.insert(0);
-        rb_tree.find(0, |node| {
+        rb_tree.insert(repo, 0);
+        rb_tree.find(repo, 0, |node| {
             if let Some(n) = node {
-                value = n.key;
+                value = n.key();
             }
         });
         assert_eq!(value, 0);
         for i in 1..=100 {
-            rb_tree.insert(i);
+            rb_tree.insert(repo, i);
         }
         for i in 0..=100 {
-            rb_tree.find(i, |node| {
+            rb_tree.find(repo, i, |node| {
                 if let Some(n) = node {
-                    value = n.key;
+                    value = n.key();
                 }
             });
             assert_eq!(value, i);
@@ -100,22 +103,24 @@ mod tests {
     }
 
     #[test]
-    fn walk_sorted_values_test() {
+    fn walk_sorted_values() {
         let mut rb_tree = RedBlackTree::new();
+        let repo: &mut RepoNode<i32, u32> = &mut RepoNode::new();
         let mut values: Vec<i32> = Vec::with_capacity(100);
         let mut result: Vec<i32> = Vec::with_capacity(100);
         for i in 1..=100 {
-            rb_tree.insert(i);
+            rb_tree.insert(repo, i);
             values.push(i);
         }
-        rb_tree.walk_in_order(|node| result.push(node.key));
+        rb_tree.walk_in_order(repo, |node| result.push(node.key()));
         assert_eq!(values, result);
     }
 
     #[test]
-    fn walk_random_inserted_values_from_range_test() {
+    fn walk_random_inserted_values_from_range() {
         init_logger();
         let mut rb_tree = RedBlackTree::new();
+        let repo: &mut RepoNode<i32, u32> = &mut RepoNode::new();
         let mut rng = thread_rng();
         let mut values: Vec<i32> = (-(VALUES_COUNT / 2)..=VALUES_COUNT / 2).collect();
         let sorted_values: Vec<i32> = values.clone();
@@ -125,11 +130,11 @@ mod tests {
         debug!("Inserting values into rbtree...");
         for i in values.iter() {
             debug!("\nvalue = {:?}", i);
-            rb_tree.insert(*i); 
+            rb_tree.insert(repo, *i); 
         }
         debug!("Walking rbtree...");
-        rb_tree.walk_in_order(|node| {
-            result.push(node.key);
+        rb_tree.walk_in_order(repo, |node| {
+            result.push(node.key());
             debug!("\n {:#?}", node);
         });
         assert_eq!(sorted_values, result);
@@ -137,7 +142,7 @@ mod tests {
 
     #[test]
     #[ignore = "walking rbtree stress test"]
-    fn walk_random_values_in_range_stress_test() {
+    fn walk_random_values_in_range_stress() {
         init_logger();
         let mut rng = thread_rng();
         let values_range = Uniform::new_inclusive(-(VALUES_COUNT / 2), VALUES_COUNT / 2);
@@ -147,6 +152,7 @@ mod tests {
                 println!("step = {}", i);
             }
             let mut rb_tree = RedBlackTree::new();
+            let repo: &mut RepoNode<i32, u32> = &mut RepoNode::new();
             let values: Vec<i32> = values_range
                 .sample_iter(&mut rng)
                 .take(VALUES_COUNT.try_into().unwrap())
@@ -157,11 +163,11 @@ mod tests {
             debug!("inserting values...");
             for i in values.iter() {
                 debug!("\nvalue = {:?}", i);
-                rb_tree.insert(*i);
+                rb_tree.insert(repo, *i);
             }
             debug!("Walking rbtree...");
-            rb_tree.walk_in_order(|node| {
-                result.push(node.key);
+            rb_tree.walk_in_order(repo, |node| {
+                result.push(node.key());
                 debug!("\n {:#?}", node);
             });
             assert_eq!(expected, result, "{}", format!("values = {:?}", values));
@@ -170,9 +176,10 @@ mod tests {
     }
 
     #[test]
-    fn walk_random_values_in_range_test() {
+    fn walk_random_values_in_range() {
         init_logger(); 
         let mut rb_tree = RedBlackTree::new();
+        let repo: &mut RepoNode<i32, u32> = &mut RepoNode::new();
         let mut rng = thread_rng();
         let values_range = Uniform::new_inclusive(-(VALUES_COUNT / 2), VALUES_COUNT / 2);
         let mut result: Vec<i32> = Vec::with_capacity(VALUES_COUNT.try_into().unwrap());
@@ -185,28 +192,28 @@ mod tests {
         debug!("inserting values...");
         for i in values.iter() {
             debug!("\nvalue = {:?}", i);
-            rb_tree.insert(*i);
+            rb_tree.insert(repo, *i);
         }
         debug!("Walking rbtree...");
-        rb_tree.walk_in_order(|node| {
-            result.push(node.key);
+        rb_tree.walk_in_order(repo, |node| {
+            result.push(node.key());
             debug!("\n {:#?}", node);
         });
         assert_eq!(expected, result, "{}", format!("values = {:?}", values));
     } 
 
     #[test]
-    fn delete_random_test() {
+    fn delete_random() {
         init_logger();
         let rng = thread_rng();
         let values_range = Uniform::new_inclusive(-(VALUES_COUNT / 2), VALUES_COUNT / 2);
         let mut result: Vec<i32> = Vec::with_capacity(VALUES_COUNT.try_into().unwrap());
-        run_delete_test(rng.clone(), values_range, &mut result);
+        run_delete(rng.clone(), values_range, &mut result);
     }
 
     #[test]
     #[ignore = "delete random from rbtree stress test"]
-    fn delete_random_stress_test() {
+    fn delete_random_stress() {
         init_logger();
         let rng = thread_rng();
         let values_range = Uniform::new_inclusive(-(VALUES_COUNT / 2), VALUES_COUNT / 2);
@@ -216,13 +223,14 @@ mod tests {
             if i % 100 == 0 {
                 println!("step = {}", i);
             }
-            run_delete_test(rng.clone(), values_range, &mut result);
+            run_delete(rng.clone(), values_range, &mut result);
             result.clear();
         }
     }
 
-    fn run_delete_test(mut rng: ThreadRng, distrib: Uniform<i32>, result: &mut Vec<i32>) {
+    fn run_delete(mut rng: ThreadRng, distrib: Uniform<i32>, result: &mut Vec<i32>) {
         let mut rb_tree = RedBlackTree::new();
+        let repo: &mut RepoNode<i32, u32> = &mut RepoNode::new();
         let values: Vec<i32> = distrib
             .sample_iter(&mut rng)
             .take(VALUES_COUNT.try_into().unwrap())
@@ -240,13 +248,13 @@ mod tests {
         debug!("inserting values...");
         for i in values.iter() {
             debug!("\nvalue = {:?}", i);
-            rb_tree.insert(*i);
+            rb_tree.insert(repo, *i);
         }
         debug!("delete value from rbtree...");
-        rb_tree.delete(deleted);
+        rb_tree.delete(repo, deleted);
         debug!("walking rbtree...");
-        rb_tree.walk_in_order(|node| {
-            result.push(node.key);
+        rb_tree.walk_in_order(repo, |node| {
+            result.push(node.key());
             debug!("\n {:#?}", node);
         });
         debug!("result = {:?}", result);
@@ -255,7 +263,7 @@ mod tests {
     }
 
     #[test]
-    fn delete_all_test() {
+    fn delete_all() {
         init_logger();
         let rng = thread_rng();
         let values_range = Uniform::new_inclusive(-(VALUES_COUNT / 2), VALUES_COUNT / 2);
@@ -267,7 +275,7 @@ mod tests {
 
     #[test]
     #[ignore = "clear rbtree stress test"]
-    fn delete_all_stress_test() {
+    fn delete_all_stress() {
         init_logger();
         let rng = thread_rng();
         let values_range = Uniform::new_inclusive(-(VALUES_COUNT / 2), VALUES_COUNT / 2);
@@ -283,6 +291,7 @@ mod tests {
 
     fn run_clear_rbtree(mut rng: ThreadRng, distrib: Uniform<i32>, result: &mut Vec<i32>) {
         let mut rb_tree = RedBlackTree::new();
+        let repo: &mut RepoNode<i32, u32> = &mut RepoNode::new();
         let values: Vec<i32> = distrib
             .sample_iter(&mut rng)
             .take(VALUES_COUNT.try_into().unwrap())
@@ -294,17 +303,17 @@ mod tests {
 
         debug!("inserting values...");
         for i in values.iter() {
-            rb_tree.insert(*i);
+            rb_tree.insert(repo, *i);
         }
         debug!("delete all values from rbtree...");
         while !shuffled.is_empty() {
             let deleted = shuffled.pop().unwrap();
             debug!("delete value = {}", deleted);
-            rb_tree.delete(deleted);
+            rb_tree.delete(repo, deleted);
         }
         debug!("walking rbtree...");
-        rb_tree.walk_in_order(|node| {
-            result.push(node.key);
+        rb_tree.walk_in_order(repo, |node| {
+            result.push(node.key());
         });
         debug!("result = {:?}", result);
         assert!(result.is_empty());
