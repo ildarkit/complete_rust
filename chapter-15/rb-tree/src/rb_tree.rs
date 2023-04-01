@@ -9,10 +9,22 @@ use crate::repo::Repository;
 
 type DefaultId = u32;
 
+const RED: &Color = &Color::Red;
+const BLACK: &Color = &Color::Black;
+
 #[derive(Debug, Clone)]
 struct NodeColor<U> {
     id: U,
     color: Color,
+}
+
+impl<U: Copy> NodeColor<U> {
+    fn new(id: &U, color: &Color) -> Self {
+        Self {
+            id: *id,
+            color: *color,
+        }
+    }
 }
 
 struct Relative<U = DefaultId> 
@@ -192,9 +204,9 @@ impl<R, T, U> RedBlackTree<'_, R, T, U>
 
     fn insert_fixup(&mut self, repo: &mut R, inserted: &U) {
         let mut current = repo.get(inserted)
-            .map(|node| NodeColor {id: *inserted, color: *node.color()});
+            .map(|node| NodeColor::new(inserted, node.color()));
         while let Some(NodeColor {id: node_id, color}) = current {
-            if color == Color::Black {
+            if color == *BLACK {
                 break;
             }
             let parent = repo.get_parent(&node_id);
@@ -211,7 +223,7 @@ impl<R, T, U> RedBlackTree<'_, R, T, U>
             };
         }
         if let Some(root) = self.root {
-            repo.get_mut(&root).unwrap().set_color(&Color::Black);
+            repo.get_mut(&root).unwrap().set_color(BLACK);
         }
     }
 
@@ -238,19 +250,15 @@ impl<R, T, U> RedBlackTree<'_, R, T, U>
     fn insert_fixup_subtree(&mut self, repo: &mut R, current_id: &U, child: &Child)
         -> Option<NodeColor<U>>
     {
-        let black = Color::Black;
         let parent_id = *repo.get_parent(current_id)?.id();
         let uncle = Self::find_uncle(repo, current_id);
         match Self::uncle_is_red(repo, &uncle) {
             true => {
-                repo.get_mut(&parent_id).unwrap().set_color(&black);
-                repo.get_mut(&uncle.unwrap()).unwrap().set_color(&black);
+                repo.get_mut(&parent_id).unwrap().set_color(BLACK);
+                repo.get_mut(&uncle.unwrap()).unwrap().set_color(BLACK);
                 let grandparent_id = *repo.get_parent(&parent_id).unwrap().id();
-                repo.get_mut(&grandparent_id).unwrap().set_color(&!black);
-                Some(NodeColor {
-                    id: grandparent_id,
-                    color: black,
-                })
+                repo.get_mut(&grandparent_id).unwrap().set_color(RED);
+                Some(NodeColor::new(&grandparent_id, BLACK))
             }
             false => {
                 let rotation = Self::get_rotation(child);
@@ -258,18 +266,17 @@ impl<R, T, U> RedBlackTree<'_, R, T, U>
                 if parent_is_child.is_some() && *child == parent_is_child.unwrap() {
                     let rotate_id = repo.mut_parent(&parent_id)
                         .map(|node| {
-                            node.set_color(&!black);
+                            node.set_color(RED);
                             *node.id()
                         });
-                    repo.get_mut(&parent_id).unwrap().set_color(&black);
+                    repo.get_mut(&parent_id).unwrap().set_color(BLACK);
                     self.rotate(repo, &rotate_id.unwrap(), &rotation);
                 } else {
                     self.rotate(repo, &parent_id, &rotation);
                 };
-                Some(NodeColor {
-                    id: parent_id,
-                    color: *repo.get(&parent_id).unwrap().color()
-                })
+                Some(NodeColor::new(&parent_id,
+                    repo.get(&parent_id).unwrap().color()
+                ))
             }
         }
     }
@@ -294,7 +301,7 @@ impl<R, T, U> RedBlackTree<'_, R, T, U>
     fn uncle_is_red(repo: &R, uncle: &Option<U>) -> bool {
         match uncle {
             Some(n) => repo.get(n)
-                .map_or(false, |n| *n.color() == Color::Red),
+                .map_or(false, |n| *n.color() == *RED),
             None => false, 
         }
     } 
@@ -433,7 +440,7 @@ impl<R, T, U> RedBlackTree<'_, R, T, U>
         let mut deleted = self.find_node(repo, value)
             .map(|node| {
                 debug!("\nnode for delete = {:#?}", node);
-                NodeColor{id: *node.id(), color: *node.color()}
+                NodeColor::new(node.id(), node.color())
             })?;
 
         let replaced = match Self::get_if_one_child(repo, &deleted.id) {
@@ -456,7 +463,7 @@ impl<R, T, U> RedBlackTree<'_, R, T, U>
                         });
                         let replace_child = repo
                             .get_right(&replace_id)
-                            .map(|node| NodeColor{id: *node.id(), color: *node.color()});
+                            .map(|node| NodeColor::new(node.id(), node.color()));
                         debug!("\nreplace node child = {:#?}", replace_child);
                         self.replace(repo, &replace_id, &replace_child);
                         replace_child
@@ -468,7 +475,7 @@ impl<R, T, U> RedBlackTree<'_, R, T, U>
                 }
             }
         };
-        if deleted.color == Color::Black {
+        if deleted.color == *BLACK {
             self.delete_fixup(repo, &replaced);
         }
         self.dec_len();
@@ -481,12 +488,7 @@ impl<R, T, U> RedBlackTree<'_, R, T, U>
         } else if repo.get_right(node).is_none() {
             repo.get_left(node)
         } else { None };
-        child.map(|node| {
-            NodeColor{
-                id: *node.id(),
-                color: *node.color()
-            }
-        })
+        child.map(|node| NodeColor::new(node.id(), node.color()))
     }
 
     fn tree_minimum(repo: &R, node: Option<U>) -> Option<U> {
@@ -499,12 +501,10 @@ impl<R, T, U> RedBlackTree<'_, R, T, U>
         result.cloned()
     }
 
-    fn delete_fixup(&mut self, repo: &mut R, mut node: &Option<NodeColor<U>>) {
-        let black = &Color::Black;
-        while let Some(n) = node {
-            if n.id != *self.root.as_ref().unwrap()
-                && n.color == *black
-            {
+    fn delete_fixup(&mut self, repo: &mut R, node: &Option<NodeColor<U>>) {
+        let mut node = node.clone();
+        while let Some(ref n) = node {
+            if n.id != self.root.unwrap() && n.color == *BLACK {
                 let child = &Self::node_is_child(repo, &n.id);
                 let parent_id = &repo.get_parent(&n.id).map(|p| p.id());
                 let (sibling, rotation) =
@@ -519,96 +519,119 @@ impl<R, T, U> RedBlackTree<'_, R, T, U>
                         },
                         None => { unreachable!() },
                     };
-                node = self.delete_fixup_subtree(
-                    repo,
-                    &n,
-                    &sibling.map(|s| *s.id()),
+                let sibling = &sibling.map(|n| {
+                    NodeColor::new(n.id(), n.color())
+                });
+                node = self.delete_fixup_subtree(repo, &n.id, sibling,
                     &rotation,
-                    &child.unwrap(),
-                );
+                    &child.unwrap());
             } else { 
-                if n.color == !Color::Black {
-                    repo.get_mut(&n.id).map(|node| node.set_color(black));
+                if n.color == *RED {
+                    repo.get_mut(&n.id).map(|node| node.set_color(BLACK));
                 }
                 break;
             }; 
         }
         if let Some(ref r) = self.root {
-            repo.get_mut(r).map(|node| node.set_color(black));
+            repo.get_mut(r).map(|node| node.set_color(BLACK));
         }
     }
 
-    // fn delete_fixup_subtree(&mut self, node: &BareTree<T>, sibling: &Tree<T>,
-    //     rotation: &Rotation, node_is_child: &Child) -> Tree<T>
-    // {
-    //     let node = node.clone();
-    //     let mut sibling = sibling.clone();
-    //     let mut parent = node.unwrap_parent();
-    //     if sibling.is_some() && sibling.as_ref().unwrap().color() == Color::Red {
-    //         sibling.as_ref().unwrap().set_color(Color::Black);
-    //         parent.set_color(Color::Red);
-    //         self.rotate(&mut parent, &rotation.clone());
-    //         sibling = match node_is_child {
-    //             Child::Left => parent.right_child(),
-    //             Child::Right => parent.left_child(),
-    //         };
-    //     }
-    //
-    //     let nephews = Self::childrens(&sibling, &node_is_child);
-    //     let red_nephews = Self::any_colors(&nephews, &Color::Red);
-    //
-    //     match red_nephews {
-    //         false => {
-    //             if sibling.is_some() {
-    //                 sibling.unwrap().set_color(Color::Red);
-    //             }
-    //             node.parent()
-    //         }
-    //         true => {
-    //             let close_nephew = nephews[0].clone();
-    //             let distant_nephew = nephews[1].clone();
-    //             let distant_black = Self::any_colors(
-    //                 &vec![distant_nephew.clone()],
-    //                 &Color::Black
-    //             );
-    //             
-    //             if distant_black {
-    //                 close_nephew.as_ref().unwrap().set_color(Color::Black);
-    //                 sibling.as_ref().unwrap().set_color(Color::Red);
-    //                 self.rotate(&mut sibling.unwrap(), &!rotation.clone());
-    //                 match node_is_child {
-    //                     Child::Left => sibling = node.unwrap_parent().right_child(),
-    //                     Child::Right => sibling = node.unwrap_parent().left_child(),
-    //                 }
-    //             } else if let Some(distant_nephew) = distant_nephew {
-    //                 distant_nephew.set_color(Color::Black);
-    //             }
-    //             sibling.unwrap().set_color(
-    //                 node.unwrap_parent().color());
-    //             node.unwrap_parent().set_color(Color::Black); 
-    //             self.rotate(&mut node.unwrap_parent(), &rotation.clone());
-    //             self.root.clone()
-    //         }
-    //     }
-    // }
-    //
-    // fn childrens(node: &Tree<T>, first_child: &Child) -> Vec<Tree<T>> {
-    //     let (left, right) = match node {
-    //         Some(n) => (n.left_child(), n.right_child()),
-    //         None => (None, None),
-    //     };
-    //     match first_child {
-    //         Child::Left => vec![left, right],
-    //         Child::Right => vec![right, left],
-    //     }
-    // }
-    //
-    // fn any_colors(nodes: &Vec<Tree<T>>, color: &Color) -> bool {
-    //     nodes.iter()
-    //         .any(|node| {
-    //             if let Some(n) = node {
-    //                 n.color() == *color
-    //             } else { false }
-    //         })
-    // }
+    fn delete_fixup_subtree(&mut self, repo: &mut R,
+        node: &U, sibling: &Option<NodeColor<U>>,
+        rotation: &Rotation, node_is_child: &Child) -> Option<NodeColor<U>>
+    {
+        let parent_id = repo.get_parent(node).map(|n| *n.id()).unwrap();
+        let mut sibling = sibling.clone().map(|sibling| {
+            if sibling.color == *RED {
+                repo.get_mut(&sibling.id).map(|s| s.set_color(BLACK));
+                repo.mut_parent(node).map(|p| p.set_color(RED));
+                self.rotate(repo, &parent_id, &rotation);
+                match node_is_child {
+                    Child::Left => {
+                        repo.get_right(&parent_id)
+                            .map(|n| *n.id())
+                    }
+                    Child::Right => {
+                        repo.get_left(&parent_id)
+                            .map(|n| *n.id())
+                    }
+                }
+            } else { Some(sibling.id) }
+        }).flatten();
+
+        let nephews = Self::childrens(repo, &sibling, &node_is_child);
+        let red_nephews = Self::any_colors(repo, &nephews[..], RED);
+
+        let node = match red_nephews {
+            false => {
+                sibling.map(|id| {
+                    repo.get_mut(&id).map(|n| n.set_color(RED));
+                });
+                repo.get_parent(node)
+            }
+            true => {
+                let close_nephew = &nephews[..1];
+                let distant_nephew = &nephews[1..];
+                let distant_black = Self::any_colors(
+                    repo, distant_nephew, BLACK);
+                
+                if distant_black {
+                    if let Some(id) = close_nephew[0] {
+                        repo.get_mut(&id).map(|n| n.set_color(BLACK));
+                    }
+                    if let Some(id) = sibling {
+                        repo.get_mut(&id).map(|n| n.set_color(RED));
+                        self.rotate(repo, &id, &!rotation.clone());
+                    }
+                    sibling = match node_is_child {
+                        Child::Left => {
+                            repo.get(&parent_id)
+                                .map(|n| n.right_child()).flatten()
+                        }
+                        Child::Right => {
+                            repo.get(&parent_id)
+                                .map(|n| n.left_child()).flatten()
+                        }
+                    };
+                } else if let Some(id) = distant_nephew[0] {
+                    repo.get_mut(&id).map(|n| n.set_color(BLACK));
+                }
+                let parent_color = repo.get(&parent_id).map(|n| *n.color()).unwrap();
+                sibling.as_ref().map(|id| {
+                    repo.get_mut(id).map(|n| n.set_color(&parent_color));
+                });
+                repo.mut_parent(node).map(|n| n.set_color(BLACK)); 
+                self.rotate(repo, &parent_id, &rotation);
+                self.root.map(|id| repo.get(&id)).flatten()
+            }
+        };
+        node.map(|p| NodeColor::new(p.id(), p.color()))
+    }
+
+    fn childrens(repo: &R, node: &Option<U>, first_child: &Child) -> Vec<Option<U>> {
+        let (left, right) = match node {
+            Some(n) => {
+                repo.get(n).map(|n| {
+                    (n.left_child(), n.right_child())
+                }).unwrap()
+            }
+            None => (None, None),
+        };
+        match first_child {
+            Child::Left => vec![left, right],
+            Child::Right => vec![right, left],
+        }
+    }
+
+    fn any_colors(repo: &R, nodes: &[Option<U>], color: &Color) -> bool {
+        nodes.iter()
+            .any(|node| {
+                if let Some(n) = node {
+                    repo.get(n).map_or(false, |n| {
+                        *n.color() == *color
+                    })
+                } else { false }
+            })
+    }
 }
