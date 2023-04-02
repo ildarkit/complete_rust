@@ -406,8 +406,7 @@ impl<R, T, U> RedBlackTree<'_, R, T, U>
         debug!("\nend rotate fn");
     }
 
-    fn replace(&mut self, repo: &mut R, removable: &U, replacement: &Option<NodeColor<U>>) {
-        let replacement = replacement.as_ref().map(|r| r.id);
+    fn replace(&mut self, repo: &mut R, removable: &U, replacement: &Option<U>) {
         let parent_id = repo.get_parent(removable).map(|p| *p.id());
         let removable_left = parent_id.as_ref().map(|p| {
             if let Some(l) = repo.get_left(p) {
@@ -418,12 +417,12 @@ impl<R, T, U> RedBlackTree<'_, R, T, U>
             None => self.root = replacement.clone(),
             Some(true) => {
                 parent_id.as_ref().map(|p| {
-                    repo.get_mut(p).unwrap().set_left_child(&replacement);
+                    repo.get_mut(p).unwrap().set_left_child(replacement);
                 });
             }
             Some(false) => {
                 parent_id.as_ref().map(|p| {
-                    repo.get_mut(&p).unwrap().set_right_child(&replacement);
+                    repo.get_mut(&p).unwrap().set_right_child(replacement);
                 });
             }
         }
@@ -444,29 +443,30 @@ impl<R, T, U> RedBlackTree<'_, R, T, U>
             })?;
 
         let replaced = match Self::get_if_one_child(repo, &deleted.id) {
-            Some(ref child) => {
-                self.replace(repo, &deleted.id, &Some(child.clone()));
-                Some(child.clone())
+            Some(ref child_id) => {
+                self.replace(repo, &deleted.id, &Some(*child_id));
+                Some(*child_id)
             }
             // node has two or no childrens
             None => {
                 let right_child = repo.get_right(&deleted.id).map(|n| *n.id());
                 match Self::tree_minimum(repo, right_child) {
-                    Some(replace_id) => {
-                        let replace_key = repo.get(&replace_id).map(|replace| {
-                            debug!("\nreplace = {:#?}", replace);
-                            deleted.color = *replace.color();
-                            replace.key()
+                    Some(replaced_id) => {
+                        let replaced_key = repo.get(&replaced_id).map(|replaced| {
+                            debug!("\nreplace = {:#?}", replaced);
+                            deleted.color = *replaced.color();
+                            replaced.key()
                         }).unwrap();
                         repo.get_mut(&deleted.id).map(|node| {
-                            node.set_key(replace_key);
+                            node.set_key(replaced_key);
                         });
-                        let replace_child = repo
-                            .get_right(&replace_id)
-                            .map(|node| NodeColor::new(node.id(), node.color()));
-                        debug!("\nreplace node child = {:#?}", replace_child);
-                        self.replace(repo, &replace_id, &replace_child);
-                        replace_child
+                        let replaced_child_id = repo
+                            .get_right(&replaced_id)
+                            .map(|node| *node.id());
+                        debug!("\nreplace node child = {:#?}", replaced_child_id);
+                        self.replace(repo, &replaced_id, &replaced_child_id);
+                        deleted.id = replaced_id;
+                        replaced_child_id
                     }
                     None => {
                         self.replace(repo, &deleted.id, &None);
@@ -482,13 +482,13 @@ impl<R, T, U> RedBlackTree<'_, R, T, U>
         repo.remove(&deleted.id).map(|n| *n.id())
     }
 
-    fn get_if_one_child(repo: &R, node: &U) -> Option<NodeColor<U>> {
+    fn get_if_one_child(repo: &R, node: &U) -> Option<U> {
         let child = if repo.get_left(node).is_none() {
             repo.get_right(node)
         } else if repo.get_right(node).is_none() {
             repo.get_left(node)
         } else { None };
-        child.map(|node| NodeColor::new(node.id(), node.color()))
+        child.map(|node| *node.id())
     }
 
     fn tree_minimum(repo: &R, node: Option<U>) -> Option<U> {
@@ -501,8 +501,11 @@ impl<R, T, U> RedBlackTree<'_, R, T, U>
         result.cloned()
     }
 
-    fn delete_fixup(&mut self, repo: &mut R, node: &Option<NodeColor<U>>) {
-        let mut node = node.clone();
+    fn delete_fixup(&mut self, repo: &mut R, node: &Option<U>) {
+        let mut node = node.as_ref()
+            .map(|id| repo.get(id))
+            .flatten()
+            .map(|n| NodeColor::new(n.id(), n.color()));
         while let Some(ref n) = node {
             if n.id != self.root.unwrap() && n.color == *BLACK {
                 let child = &Self::node_is_child(repo, &n.id);

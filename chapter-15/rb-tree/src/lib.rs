@@ -314,6 +314,7 @@ mod tests {
         debug!("walking rbtree...");
         rb_tree.walk_in_order(repo, |node| {
             result.push(node.key());
+            debug!("\n node = {:#?}", node);
         });
         debug!("result = {:?}", result);
         assert!(result.is_empty());
