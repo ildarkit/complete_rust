@@ -26,8 +26,9 @@ impl<T, U> Repository<T, U> for RepoNode<T, U>
         Self(HashMap::new())
     }
 
-    fn add(&mut self, id: &U, key: T) {
+    fn add<'a>(&'a mut self, id: &'a U, key: T) -> &U {
         self.0.insert(*id, Node::new(id, key));
+        id
     }
 
     fn remove(&mut self, node_id: &U) -> Option<Self::Output> {
@@ -50,8 +51,19 @@ mod tests {
     use rand::prelude::*;
     use rand::distributions::Uniform;
     use log::debug;
+    use std::cell::Cell;
 
     const VALUES_COUNT: i32 = 2000;
+
+    thread_local!(static SEQ_ID: Cell<usize> = Cell::new(1));
+
+    fn get_id() -> usize {
+        SEQ_ID.with(|id| {
+            let new_id = id.get();
+            id.set(new_id + 1);
+            new_id
+        })
+    }
 
     fn init_logger() {
         let _ = env_logger::builder().is_test(true).try_init();
@@ -59,7 +71,7 @@ mod tests {
 
     #[test]
     fn not_found() {
-        let repo: &mut RepoNode<i32, u32> = &mut RepoNode::new();
+        let repo: &mut RepoNode<i32, usize> = &mut RepoNode::new();
         let mut rb_tree = RedBlackTree::new();
         let mut value: i32 = -1;
         rb_tree.find(repo, 0, |node| {
@@ -68,7 +80,8 @@ mod tests {
             }
         });
         assert_eq!(value, -1);
-        rb_tree.insert(repo, 1);
+        let id = get_id();
+        rb_tree.insert(repo, &id, 1);
         rb_tree.find(repo, 2, |node| {
             if let Some(n) = node {
                 value = n.key();
@@ -79,10 +92,11 @@ mod tests {
 
     #[test]
     fn found() {
-        let repo: &mut RepoNode<i32, u32> = &mut RepoNode::new();
+        let repo: &mut RepoNode<usize, usize> = &mut RepoNode::new();
         let mut rb_tree = RedBlackTree::new();
-        let mut value: i32 = -1;
-        rb_tree.insert(repo, 0);
+        let mut value: usize = 1;
+        let id = get_id();
+        rb_tree.insert(repo, &id, 0);
         rb_tree.find(repo, 0, |node| {
             if let Some(n) = node {
                 value = n.key();
@@ -90,9 +104,9 @@ mod tests {
         });
         assert_eq!(value, 0);
         for i in 1..=100 {
-            rb_tree.insert(repo, i);
+            rb_tree.insert(repo, &get_id(), i);
         }
-        for i in 0..=100 {
+        for i in 1..=100 {
             rb_tree.find(repo, i, |node| {
                 if let Some(n) = node {
                     value = n.key();
@@ -105,11 +119,11 @@ mod tests {
     #[test]
     fn walk_sorted_values() {
         let mut rb_tree = RedBlackTree::new();
-        let repo: &mut RepoNode<i32, u32> = &mut RepoNode::new();
-        let mut values: Vec<i32> = Vec::with_capacity(100);
-        let mut result: Vec<i32> = Vec::with_capacity(100);
+        let repo: &mut RepoNode<usize, usize> = &mut RepoNode::new();
+        let mut values: Vec<usize> = Vec::with_capacity(100);
+        let mut result: Vec<usize> = Vec::with_capacity(100);
         for i in 1..=100 {
-            rb_tree.insert(repo, i);
+            rb_tree.insert(repo, &i, i);
             values.push(i);
         }
         rb_tree.walk_in_order(repo, |node| result.push(node.key()));
@@ -120,7 +134,7 @@ mod tests {
     fn walk_random_inserted_values_from_range() {
         init_logger();
         let mut rb_tree = RedBlackTree::new();
-        let repo: &mut RepoNode<i32, u32> = &mut RepoNode::new();
+        let repo: &mut RepoNode<i32, usize> = &mut RepoNode::new();
         let mut rng = thread_rng();
         let mut values: Vec<i32> = (-(VALUES_COUNT / 2)..=VALUES_COUNT / 2).collect();
         let sorted_values: Vec<i32> = values.clone();
@@ -128,9 +142,9 @@ mod tests {
 
         values.shuffle(&mut rng);
         debug!("Inserting values into rbtree...");
-        for i in values.iter() {
-            debug!("\nvalue = {:?}", i);
-            rb_tree.insert(repo, *i); 
+        for (i, v) in values.iter().enumerate() {
+            debug!("\nvalue = {:?}", v);
+            rb_tree.insert(repo, &i, *v); 
         }
         debug!("Walking rbtree...");
         rb_tree.walk_in_order(repo, |node| {
@@ -152,7 +166,7 @@ mod tests {
                 println!("step = {}", i);
             }
             let mut rb_tree = RedBlackTree::new();
-            let repo: &mut RepoNode<i32, u32> = &mut RepoNode::new();
+            let repo: &mut RepoNode<i32, usize> = &mut RepoNode::new();
             let values: Vec<i32> = values_range
                 .sample_iter(&mut rng)
                 .take(VALUES_COUNT.try_into().unwrap())
@@ -161,9 +175,9 @@ mod tests {
             let mut expected = values.clone();
             expected.sort();
             debug!("inserting values...");
-            for i in values.iter() {
-                debug!("\nvalue = {:?}", i);
-                rb_tree.insert(repo, *i);
+            for (i, v) in values.iter().enumerate() {
+                debug!("\nvalue = {:?}", v);
+                rb_tree.insert(repo, &i, *v);
             }
             debug!("Walking rbtree...");
             rb_tree.walk_in_order(repo, |node| {
@@ -179,7 +193,7 @@ mod tests {
     fn walk_random_values_in_range() {
         init_logger(); 
         let mut rb_tree = RedBlackTree::new();
-        let repo: &mut RepoNode<i32, u32> = &mut RepoNode::new();
+        let repo: &mut RepoNode<i32, usize> = &mut RepoNode::new();
         let mut rng = thread_rng();
         let values_range = Uniform::new_inclusive(-(VALUES_COUNT / 2), VALUES_COUNT / 2);
         let mut result: Vec<i32> = Vec::with_capacity(VALUES_COUNT.try_into().unwrap());
@@ -190,9 +204,9 @@ mod tests {
         let mut expected = values.clone();
         expected.sort();
         debug!("inserting values...");
-        for i in values.iter() {
-            debug!("\nvalue = {:?}", i);
-            rb_tree.insert(repo, *i);
+        for (i, v) in values.iter().enumerate() {
+            debug!("\nvalue = {:?}", v);
+            rb_tree.insert(repo, &i, *v);
         }
         debug!("Walking rbtree...");
         rb_tree.walk_in_order(repo, |node| {
@@ -230,7 +244,7 @@ mod tests {
 
     fn run_delete(mut rng: ThreadRng, distrib: Uniform<i32>, result: &mut Vec<i32>) {
         let mut rb_tree = RedBlackTree::new();
-        let repo: &mut RepoNode<i32, u32> = &mut RepoNode::new();
+        let repo: &mut RepoNode<i32, usize> = &mut RepoNode::new();
         let values: Vec<i32> = distrib
             .sample_iter(&mut rng)
             .take(VALUES_COUNT.try_into().unwrap())
@@ -246,9 +260,9 @@ mod tests {
         debug!("values = {:?}", values);
 
         debug!("inserting values...");
-        for i in values.iter() {
-            debug!("\nvalue = {:?}", i);
-            rb_tree.insert(repo, *i);
+        for (i, v) in values.iter().enumerate() {
+            debug!("\nvalue = {:?}", v);
+            rb_tree.insert(repo, &i, *v);
         }
         debug!("delete value from rbtree...");
         rb_tree.delete(repo, deleted);
@@ -291,7 +305,7 @@ mod tests {
 
     fn run_clear_rbtree(mut rng: ThreadRng, distrib: Uniform<i32>, result: &mut Vec<i32>) {
         let mut rb_tree = RedBlackTree::new();
-        let repo: &mut RepoNode<i32, u32> = &mut RepoNode::new();
+        let repo: &mut RepoNode<i32, usize> = &mut RepoNode::new();
         let values: Vec<i32> = distrib
             .sample_iter(&mut rng)
             .take(VALUES_COUNT.try_into().unwrap())
@@ -302,8 +316,8 @@ mod tests {
         debug!("shuffled = {:?}", shuffled);
 
         debug!("inserting values...");
-        for i in values.iter() {
-            rb_tree.insert(repo, *i);
+        for (i, v) in values.iter().enumerate() {
+            rb_tree.insert(repo, &i, *v);
         }
         debug!("delete all values from rbtree...");
         while !shuffled.is_empty() {

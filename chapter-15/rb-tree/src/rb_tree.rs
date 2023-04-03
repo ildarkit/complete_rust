@@ -1,13 +1,11 @@
 use std::fmt;
 use std::marker::PhantomData;
 use std::hash::Hash;
-use std::ops::{Not, AddAssign};
+use std::ops::Not;
 use log::debug;
 
 use crate::node::{Color, Operations};
 use crate::repo::Repository;
-
-type DefaultId = u32;
 
 const RED: &Color = &Color::Red;
 const BLACK: &Color = &Color::Black;
@@ -27,7 +25,7 @@ impl<U: Copy> NodeColor<U> {
     }
 }
 
-struct Relative<U = DefaultId> 
+struct Relative<U> 
     where
         U: Eq + Hash + Default + fmt::Debug + Copy + PartialOrd
 {
@@ -71,13 +69,12 @@ impl Not for Rotation {
 }
 
 #[derive(Default)]
-pub struct RedBlackTree<'a, R, T, U = DefaultId> 
+pub struct RedBlackTree<'a, R, T, U> 
     where
         T: Eq + Hash + Default + Clone + fmt::Debug,
         U: Eq + Hash + Default + fmt::Debug + Copy + PartialOrd,
         R: Repository<T, U>,
 {
-    id_counter: U,
     key: PhantomData<T>,
     nodes: PhantomData<&'a R>,
     root: Option<U>,
@@ -87,7 +84,7 @@ pub struct RedBlackTree<'a, R, T, U = DefaultId>
 impl<R, T, U> RedBlackTree<'_, R, T, U> 
     where
         T: Eq + Hash + Default + PartialEq + PartialOrd + Clone + fmt::Debug,
-        U: Eq + Hash + Default + fmt::Debug + Copy + PartialOrd + AddAssign<DefaultId>,
+        U: Eq + Hash + Default + fmt::Debug + Copy + PartialOrd,
         for<'a> R: Repository<T, U> + Default + 'a,
         R::Output: Operations<T, U> + fmt::Debug + PartialOrd + Clone,
 {
@@ -101,9 +98,8 @@ impl<R, T, U> RedBlackTree<'_, R, T, U>
         self.length
     }
 
-    pub fn insert(&mut self, repo: &mut R, value: T) {
-        let new_id = &self.get_id();
-        repo.add(new_id, value);
+    pub fn insert(&mut self, repo: &mut R, id: &U, value: T) {
+        let new_id = &repo.add(id, value).clone();
         
         match self.root {
             None => self.root = Some(*new_id),
@@ -133,11 +129,6 @@ impl<R, T, U> RedBlackTree<'_, R, T, U>
         debug!("Fixed node:\n {:#?}", repo.get(new_id));
     }
 
-    fn get_id(&mut self) -> U {
-        self.id_counter += 1;
-        self.id_counter
-    }
-
     fn inc_len(&mut self) {
         self.length += 1;
     }
@@ -157,6 +148,7 @@ impl<R, T, U> RedBlackTree<'_, R, T, U>
         let mut current = self.root.clone();
         while let Some(ref node_id) = current {
             let node = repo.get(node_id)?;
+            debug!("\n founded node = {:#?}", node);
             if node.key() == value {
                 return Some(node.clone());
             }

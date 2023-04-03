@@ -10,7 +10,7 @@ pub trait Repository<T, U>
 
     fn new() -> Self;
 
-    fn add(&mut self, id: &U, key: T);
+    fn add<'a>(&'a mut self, id: &'a U, key: T) -> &U;
 
     fn remove(&mut self, node_id: &U) -> Option<Self::Output>;
 
