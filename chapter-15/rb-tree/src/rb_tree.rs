@@ -73,7 +73,7 @@ impl Not for Rotation {
 #[derive(Default)]
 pub struct RedBlackTree<'a, R, T, U = DefaultId> 
     where
-        T: Eq + Hash + Default + Copy + Clone + fmt::Debug,
+        T: Eq + Hash + Default + Clone + fmt::Debug,
         U: Eq + Hash + Default + fmt::Debug + Copy + PartialOrd,
         R: Repository<T, U>,
 {
@@ -86,7 +86,7 @@ pub struct RedBlackTree<'a, R, T, U = DefaultId>
 
 impl<R, T, U> RedBlackTree<'_, R, T, U> 
     where
-        T: Eq + Hash + Default + PartialEq + PartialOrd + Copy + Clone + fmt::Debug,
+        T: Eq + Hash + Default + PartialEq + PartialOrd + Clone + fmt::Debug,
         U: Eq + Hash + Default + fmt::Debug + Copy + PartialOrd + AddAssign<DefaultId>,
         for<'a> R: Repository<T, U> + Default + 'a,
         R::Output: Operations<T, U> + fmt::Debug + PartialOrd + Clone,
@@ -458,7 +458,7 @@ impl<R, T, U> RedBlackTree<'_, R, T, U>
                             replaced.key()
                         }).unwrap();
                         repo.get_mut(&deleted.id).map(|node| {
-                            node.set_key(replaced_key);
+                            node.set_key(&replaced_key);
                         });
                         let replaced_child_id = repo
                             .get_right(&replaced_id)

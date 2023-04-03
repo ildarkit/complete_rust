@@ -18,15 +18,6 @@ pub trait Repository<T, U>
 
     fn get_mut(&mut self, node_id: &U) -> Option<&mut Self::Output>;
 
-    fn replace_key(&mut self, node: &U, other: &U) {
-        let replace_key = match self.get(other) {
-            Some(n) => n.key(),
-            None => return,
-        };
-        self.get_mut(node)
-            .map(|node| node.set_key(replace_key));
-    }
-
     fn mut_parent(&mut self, node: &U) -> Option<&mut Self::Output> {
         self.get(node)
             .map(|n| n.parent())

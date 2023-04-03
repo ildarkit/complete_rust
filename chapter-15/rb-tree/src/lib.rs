@@ -12,12 +12,12 @@ pub use crate::repo::Repository;
 #[derive(Default, Debug, Clone)]
 pub struct RepoNode<T, U>(HashMap<U, Node<T, U>>)
     where 
-        T: Eq + Hash + Default + fmt::Debug + Clone + Copy,
+        T: Eq + Hash + Default + fmt::Debug + Clone,
         U: Eq + Hash + Default + fmt::Debug + Copy + PartialOrd;
 
 impl<T, U> Repository<T, U> for RepoNode<T, U>
     where 
-        T: Eq + Hash + Default + fmt::Debug + Clone + Copy,
+        T: Eq + Hash + Default + fmt::Debug + Clone,
         U: Eq + Hash + Default + fmt::Debug + Copy + PartialOrd
 {
     type Output = Node<T, U>;

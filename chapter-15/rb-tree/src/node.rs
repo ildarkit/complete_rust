@@ -25,7 +25,7 @@ pub trait Operations<T, U> {
 
     fn key(&self) -> T;
 
-    fn set_key(&mut self, key: T);
+    fn set_key(&mut self, key: &T);
 
     fn set_left_child(&mut self, node: &Option<U>);
 
@@ -62,7 +62,7 @@ pub struct Node<T, U>
 
 impl<T, U> Operations<T, U> for Node<T, U> 
     where
-        T: Default + Clone + Copy + fmt::Debug,
+        T: Default + Clone + fmt::Debug,
         U: PartialEq + PartialOrd + Default + Copy + fmt::Debug
 {
     fn new(id: &U, key: T) -> Self {
@@ -74,11 +74,11 @@ impl<T, U> Operations<T, U> for Node<T, U>
     }
 
     fn key(&self) -> T {
-        self.key
+        self.key.clone()
     }
 
-    fn set_key(&mut self, key: T) {
-        self.key = key;
+    fn set_key(&mut self, key: &T) {
+        self.key = key.clone();
     }
 
     fn set_left_child(&mut self, node: &Option<U>) {
