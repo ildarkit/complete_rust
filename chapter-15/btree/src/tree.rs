@@ -123,13 +123,13 @@ impl<T> BTree<T>
         }
     }
 
-    pub fn walk(&self, callback: impl Fn(&T) -> ()) {
+    pub fn walk(&self, mut callback: impl FnMut(&T) -> ()) {
         if let Some(ref root) = self.root {
-            self.walk_in_order(root, &callback);
+            self.walk_in_order(root, &mut callback);
         }
     }
 
-    fn walk_in_order(&self, node: &Tree<T>, callback: &impl Fn(&T) -> ()) {
+    fn walk_in_order(&self, node: &Tree<T>, callback: &mut impl FnMut(&T) -> ()) {
         if let Some(ref left) = node.left_child() {
             self.walk_in_order(left, callback);
         }

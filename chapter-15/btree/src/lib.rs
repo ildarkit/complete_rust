@@ -78,4 +78,24 @@ mod tests {
         }
     }
 
+    #[test]
+    fn walk_in_order() {
+        let mut rng = rand::thread_rng();
+        let mut btree = BTree::new(4);
+        let mut index: Vec<usize> = (0..LEN).collect();
+        let mut result = Vec::with_capacity(LEN);
+        index.shuffle(&mut rng);
+        for i in index.iter() {
+            let s: String = Alphanumeric
+                .sample_string(&mut rng, 7); 
+            let v = Value::new(*i, &s);
+            btree.add(v);
+        }
+        index.sort();
+        btree.walk(|n| {
+            let node = n.clone();
+            result.push(node.id());
+        });
+        assert_eq!(index, result);
+    }
 }
