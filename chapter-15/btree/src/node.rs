@@ -1,8 +1,8 @@
 pub(crate) type Tree<T> = Box<Node<T>>;
 pub(crate) type Data<T> = (Option<T>, Option<Tree<T>>);
 
-pub trait Identity {
-    fn id(&self) -> usize;
+pub trait Key {
+    fn key(&self) -> usize;
 }
 
 #[derive(Clone, PartialEq, Debug, Default)]
@@ -28,7 +28,7 @@ pub(crate) struct Node<T> {
 
 impl<T> Node<T>
     where
-        T: Clone + Default + Identity
+        T: Clone + Default + Key
 {
 
     pub(crate) fn new_leaf() -> Self {
@@ -80,7 +80,7 @@ impl<T> Node<T>
         for _ in split_at..self.values.len() {
             let value = self.values.pop().unwrap();
             let child = self.children.pop().unwrap();
-            sibling.add_key(value.as_ref().unwrap().id(),
+            sibling.add_key(value.as_ref().unwrap().key(),
                 (value, child)
             );
         }
@@ -92,7 +92,7 @@ impl<T> Node<T>
         let mut result = None;
         for v in self.values.iter() {
             if let Some(value) = v {
-                if value.id() == key {
+                if value.key() == key {
                     result = Some(value);
                     break;
                 }
@@ -120,16 +120,16 @@ impl<T> Node<T>
         }
     }
 
-    pub(crate) fn remove_key(&mut self, id: usize) -> Option<(usize, Data<T>)> {
-        match self.find_closest_index(id) {
+    pub(crate) fn remove_key(&mut self, key: usize) -> Option<(usize, Data<T>)> {
+        match self.find_closest_index(key) {
             Direction::Left => {
                 let tree = self.left_child.take();
-                Some((id, (None, tree)))
+                Some((key, (None, tree)))
             }
             Direction::Right(index) => {
                 let val = self.values.remove(index);
                 let tree = self.children.remove(index);
-                Some((val.as_ref().unwrap().id(), (val, tree)))
+                Some((val.as_ref().unwrap().key(), (val, tree)))
             }
         }
     }
@@ -138,7 +138,7 @@ impl<T> Node<T>
         let mut index = Direction::Left;
         for (i, pair) in self.values.iter().enumerate() {
             if let Some(val) = pair {
-                if val.id() <= key {
+                if val.key() <= key {
                     index = Direction::Right(i);
                 } else { break }
             }

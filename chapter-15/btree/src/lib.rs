@@ -17,20 +17,20 @@ mod tests {
 
     #[derive(Clone, Default, Debug, PartialEq)]
     struct Value {
-        id: usize,
+        key: usize,
         #[allow(dead_code)]
         value: String,
     }
 
     impl Value {
-        fn new(id: usize, value: &str) -> Self {
-            Self { id, value: value.to_owned() }
+        fn new(key: usize, value: &str) -> Self {
+            Self { key, value: value.to_owned() }
         }
     }
 
-    impl Identity for Value {
-        fn id(&self) -> usize {
-            self.id
+    impl Key for Value {
+        fn key(&self) -> usize {
+            self.key
         }
     }
 
@@ -101,7 +101,7 @@ mod tests {
         index.sort();
         btree.walk(|n| {
             let node = n.clone();
-            result.push(node.id());
+            result.push(node.key());
         });
         assert_eq!(index, result);
     }

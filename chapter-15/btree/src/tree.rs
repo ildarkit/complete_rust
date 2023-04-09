@@ -1,6 +1,6 @@
 use std::{cmp, fmt};
 use log::debug;
-use crate::node::{Tree, NodeType, Data, Node, Identity};
+use crate::node::{Tree, NodeType, Data, Node, Key};
 
 #[derive(Default)]
 pub struct BTree<T> {
@@ -11,7 +11,7 @@ pub struct BTree<T> {
 
 impl<T> BTree<T>
     where
-        T: Clone + Default + fmt::Debug + Identity
+        T: Clone + Default + fmt::Debug + Key
 {
     pub fn new(order: usize) -> Self {
         Self { order, ..Default::default() }
@@ -34,15 +34,15 @@ impl<T> BTree<T>
         -> (Tree<T>, Option<Data<T>>)
     {
         let mut node = node;
-        let id = value.id();
+        let key = value.key();
 
         match node.get_type() {
             NodeType::Leaf => {
-                node.add_key(id, (Some(value), None));
+                node.add_key(key, (Some(value), None));
                 self.inc_length();
             }
             NodeType::Regular => {
-                let (key, (val, tree)) = node.remove_key(id).unwrap();
+                let (key, (val, tree)) = node.remove_key(key).unwrap();
                 let new = self.add_recursive(tree.unwrap(), value, false);
                 if val.is_none() {
                     node.add_left_child(Some(new.0));
@@ -50,8 +50,8 @@ impl<T> BTree<T>
                     node.add_key(key, (val, Some(new.0)));
                 }
                 if let Some(split_result) = new.1 {
-                    let new_id = &split_result.0.clone().unwrap();
-                    node.add_key(new_id.id(), split_result);
+                    let new_key = &split_result.0.clone().unwrap();
+                    node.add_key(new_key.key(), split_result);
                 }
             }
         }
@@ -61,7 +61,7 @@ impl<T> BTree<T>
             if is_root {
                 let mut parent = Node::new_regular();
                 parent.add_left_child(Some(node));
-                parent.add_key(new_parent.id(), (Some(new_parent), Some(sibling)));
+                parent.add_key(new_parent.key(), (Some(new_parent), Some(sibling)));
                 (Box::new(parent), None)
             } else {
                 (node, Some((Some(new_parent), Some(sibling))))
@@ -105,19 +105,19 @@ impl<T> BTree<T>
         }
     }
 
-    pub fn find(&self, id: usize) -> Option<T> {
+    pub fn find(&self, key: usize) -> Option<T> {
         match self.root.as_ref() {
-            Some(tree) => self.find_reqursive(tree, id),
+            Some(tree) => self.find_reqursive(tree, key),
             _ => None,
         }
     }
 
-    fn find_reqursive(&self, node: &Tree<T>, id: usize) -> Option<T> {
-        match node.get_value(id) {
+    fn find_reqursive(&self, node: &Tree<T>, key: usize) -> Option<T> {
+        match node.get_value(key) {
             Some(value) => Some(value.clone()),
             None if node.get_type() != NodeType::Leaf => {
-                if let Some(tree) = node.get_child(id) {
-                    self.find_reqursive(tree, id)
+                if let Some(tree) = node.get_child(key) {
+                    self.find_reqursive(tree, key)
                 } else { None }
             }
             _ => None,
