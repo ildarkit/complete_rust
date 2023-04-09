@@ -1,4 +1,5 @@
-use std::cmp;
+use std::{cmp, fmt};
+use log::debug;
 use crate::node::{Tree, NodeType, Data, Node, Identity};
 
 #[derive(Default)]
@@ -10,7 +11,7 @@ pub struct BTree<T> {
 
 impl<T> BTree<T>
     where
-        T: Clone + Default + Identity
+        T: Clone + Default + fmt::Debug + Identity
 {
     pub fn new(order: usize) -> Self {
         Self { order, ..Default::default() }
@@ -130,15 +131,18 @@ impl<T> BTree<T>
     }
 
     fn walk_in_order(&self, node: &Tree<T>, callback: &mut impl FnMut(&T) -> ()) {
+        debug!("\nwalk node = {:#?}", node);
         if let Some(ref left) = node.left_child() {
+            debug!("\nleft child = {:#?}", left);
             self.walk_in_order(left, callback);
         }
         for i in 0..node.values_len() {
-            if let Some(ref k) = node.get_value(i) {
-                callback(k);
+            if let Some(ref value) = node.values()[i] {
+                callback(value);
             }
-            if let Some(ref c) = node.get_child(i) {
-                self.walk_in_order(&c, callback);
+            if let Some(ref child) = node.children()[i] {
+                debug!("\nchild node = {:#?}", child);
+                self.walk_in_order(&child, callback);
             }
         }
     }

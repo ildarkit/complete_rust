@@ -18,7 +18,7 @@ pub(crate) enum Direction {
     Right(usize),
 }
 
-#[derive(Clone, Default)]
+#[derive(Clone, Default, Debug)]
 pub(crate) struct Node<T> {
     values: Vec<Option<T>>,
     children: Vec<Option<Tree<T>>>,
@@ -52,6 +52,10 @@ impl<T> Node<T>
 
     pub(crate) fn children(&self) -> &[Option<Tree<T>>] {
         &self.children[..]
+    }
+
+    pub(crate) fn values(&self) -> &[Option<T>] {
+        &self.values[..]
     }
 
     pub(crate) fn len(&self) -> usize {

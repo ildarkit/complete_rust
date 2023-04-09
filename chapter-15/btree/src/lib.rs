@@ -3,12 +3,17 @@ pub mod tree;
 
 #[cfg(test)]
 mod tests {
+    use log::debug;
     use rand::prelude::*;
     use rand::distributions::{Alphanumeric, DistString};
     use super::node::*;
     use super::tree::*;
 
     const LEN: usize = 10;
+
+    fn init_logger() {
+        let _ = env_logger::builder().is_test(true).try_init();
+    }
 
     #[derive(Clone, Default, Debug, PartialEq)]
     struct Value {
@@ -80,11 +85,13 @@ mod tests {
 
     #[test]
     fn walk_in_order() {
+        init_logger();
         let mut rng = rand::thread_rng();
         let mut btree = BTree::new(4);
-        let mut index: Vec<usize> = (0..LEN).collect();
-        let mut result = Vec::with_capacity(LEN);
+        let mut index: Vec<usize> = (0..LEN*LEN).collect();
+        let mut result = Vec::with_capacity(LEN*LEN);
         index.shuffle(&mut rng);
+        debug!("index for value = {:?}", index);
         for i in index.iter() {
             let s: String = Alphanumeric
                 .sample_string(&mut rng, 7); 
