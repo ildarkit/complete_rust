@@ -16,20 +16,20 @@ mod tests {
     }
 
     #[derive(Clone, Default, Debug, PartialEq)]
-    struct Value {
-        key: usize,
+    struct Value<U> {
+        key: U,
         #[allow(dead_code)]
         value: String,
     }
 
-    impl Value {
-        fn new(key: usize, value: &str) -> Self {
+    impl<U> Value<U> {
+        fn new(key: U, value: &str) -> Self {
             Self { key, value: value.to_owned() }
         }
     }
 
-    impl Key for Value {
-        fn key(&self) -> usize {
+    impl<U: Copy> Key<U> for Value<U> {
+        fn key(&self) -> U {
             self.key
         }
     }

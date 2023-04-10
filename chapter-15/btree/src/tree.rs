@@ -3,15 +3,16 @@ use log::debug;
 use crate::node::{Tree, NodeType, Data, Node, Key};
 
 #[derive(Default)]
-pub struct BTree<T> {
-    root: Option<Tree<T>>,
+pub struct BTree<U, T> {
+    root: Option<Tree<U, T>>,
     order: usize,
     length: usize,
 }
 
-impl<T> BTree<T>
+impl<U, T> BTree<U, T>
     where
-        T: Clone + Default + fmt::Debug + Key
+        T: Clone + Default + fmt::Debug + Key<U>,
+        U: Copy + Default + fmt::Debug + PartialEq + PartialOrd,
 {
     pub fn new(order: usize) -> Self {
         Self { order, ..Default::default() }
@@ -30,8 +31,8 @@ impl<T> BTree<T>
         self.root = Some(root);
     }
 
-    fn add_recursive(&mut self, node: Tree<T>, value: T, is_root: bool)
-        -> (Tree<T>, Option<Data<T>>)
+    fn add_recursive(&mut self, node: Tree<U, T>, value: T, is_root: bool)
+        -> (Tree<U, T>, Option<Data<U, T>>)
     {
         let mut node = node;
         let key = value.key();
@@ -78,7 +79,7 @@ impl<T> BTree<T>
         })
     }
 
-    fn validate(&self, node: &Tree<T>, level: usize)
+    fn validate(&self, node: &Tree<U, T>, level: usize)
         -> (bool, usize, usize)
     {
         match node.get_type() {
@@ -105,14 +106,14 @@ impl<T> BTree<T>
         }
     }
 
-    pub fn find(&self, key: usize) -> Option<T> {
+    pub fn find(&self, key: U) -> Option<T> {
         match self.root.as_ref() {
             Some(tree) => self.find_reqursive(tree, key),
             _ => None,
         }
     }
 
-    fn find_reqursive(&self, node: &Tree<T>, key: usize) -> Option<T> {
+    fn find_reqursive(&self, node: &Tree<U, T>, key: U) -> Option<T> {
         match node.get_value(key) {
             Some(value) => Some(value.clone()),
             None if node.get_type() != NodeType::Leaf => {
@@ -130,7 +131,7 @@ impl<T> BTree<T>
         }
     }
 
-    fn walk_in_order(&self, node: &Tree<T>, callback: &mut impl FnMut(&T) -> ()) {
+    fn walk_in_order(&self, node: &Tree<U, T>, callback: &mut impl FnMut(&T) -> ()) {
         debug!("\nwalk node = {:#?}", node);
         if let Some(ref left) = node.left_child() {
             debug!("\nleft child = {:#?}", left);

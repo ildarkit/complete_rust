@@ -1,8 +1,10 @@
-pub(crate) type Tree<T> = Box<Node<T>>;
-pub(crate) type Data<T> = (Option<T>, Option<Tree<T>>);
+use std::marker::PhantomData;
 
-pub trait Key {
-    fn key(&self) -> usize;
+pub(crate) type Tree<U, T> = Box<Node<U, T>>;
+pub(crate) type Data<U, T> = (Option<T>, Option<Tree<U, T>>);
+
+pub trait Key<U: Copy> {
+    fn key(&self) -> U;
 }
 
 #[derive(Clone, PartialEq, Debug, Default)]
@@ -19,16 +21,18 @@ pub(crate) enum Direction {
 }
 
 #[derive(Clone, Default, Debug)]
-pub(crate) struct Node<T> {
+pub(crate) struct Node<U, T> {
     values: Vec<Option<T>>,
-    children: Vec<Option<Tree<T>>>,
-    left_child: Option<Tree<T>>,
+    children: Vec<Option<Tree<U, T>>>,
+    left_child: Option<Tree<U, T>>,
     node_type: NodeType,
+    phantom: PhantomData<U>,
 }
 
-impl<T> Node<T>
+impl<U, T> Node<U, T>
     where
-        T: Clone + Default + Key
+        T: Clone + Default + Key<U>,
+        U: Copy + Default + PartialEq + PartialOrd,
 {
 
     pub(crate) fn new_leaf() -> Self {
@@ -50,7 +54,7 @@ impl<T> Node<T>
         self.values.len()
     }
 
-    pub(crate) fn children(&self) -> &[Option<Tree<T>>] {
+    pub(crate) fn children(&self) -> &[Option<Tree<U, T>>] {
         &self.children[..]
     }
 
@@ -66,11 +70,11 @@ impl<T> Node<T>
         self.node_type.clone()
     }
 
-    pub(crate) fn left_child(&self) -> &Option<Tree<T>> {
+    pub(crate) fn left_child(&self) -> &Option<Tree<U, T>> {
         &self.left_child
     }
 
-    pub(crate) fn split(&mut self) -> (T, Tree<T>) {
+    pub(crate) fn split(&mut self) -> (T, Tree<U, T>) {
         let mut sibling = Node::new(self.node_type.clone());
         let val_count = self.values.len();
         let split_at = val_count / 2usize;
@@ -88,7 +92,7 @@ impl<T> Node<T>
         (val.unwrap(), Box::new(sibling))
     }
 
-    pub(crate) fn get_value(&self, key: usize) -> Option<&T> {
+    pub(crate) fn get_value(&self, key: U) -> Option<&T> {
         let mut result = None;
         for v in self.values.iter() {
             if let Some(value) = v {
@@ -101,11 +105,11 @@ impl<T> Node<T>
         result
     }
 
-    pub(crate) fn add_left_child(&mut self, node: Option<Tree<T>>) {
+    pub(crate) fn add_left_child(&mut self, node: Option<Tree<U, T>>) {
         self.left_child = node;
     }
 
-    pub(crate) fn add_key(&mut self, key: usize, value: Data<T>) {
+    pub(crate) fn add_key(&mut self, key: U, value: Data<U, T>) {
         let pos = match self.find_closest_index(key) {
             Direction::Left => 0,
             Direction::Right(p) => p + 1,
@@ -120,7 +124,7 @@ impl<T> Node<T>
         }
     }
 
-    pub(crate) fn remove_key(&mut self, key: usize) -> Option<(usize, Data<T>)> {
+    pub(crate) fn remove_key(&mut self, key: U) -> Option<(U, Data<U, T>)> {
         match self.find_closest_index(key) {
             Direction::Left => {
                 let tree = self.left_child.take();
@@ -134,7 +138,7 @@ impl<T> Node<T>
         }
     }
 
-    pub(crate) fn find_closest_index(&self, key: usize) -> Direction {
+    pub(crate) fn find_closest_index(&self, key: U) -> Direction {
         let mut index = Direction::Left;
         for (i, pair) in self.values.iter().enumerate() {
             if let Some(val) = pair {
@@ -146,7 +150,7 @@ impl<T> Node<T>
         index
     }
 
-    pub(crate) fn get_child(&self, key: usize) -> Option<&Tree<T>> {
+    pub(crate) fn get_child(&self, key: U) -> Option<&Tree<U, T>> {
         match self.find_closest_index(key) {
             Direction::Left => self.left_child.as_ref(),
             Direction::Right(i) => self.children[i].as_ref(),
