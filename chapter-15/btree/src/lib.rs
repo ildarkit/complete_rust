@@ -9,7 +9,7 @@ mod tests {
     use super::node::*;
     use super::tree::*;
 
-    const LEN: usize = 10;
+    const LEN: usize = 10000;
 
     fn init_logger() {
         let _ = env_logger::builder().is_test(true).try_init();
@@ -88,8 +88,8 @@ mod tests {
         init_logger();
         let mut rng = rand::thread_rng();
         let mut btree = BTree::new(4);
-        let mut index: Vec<usize> = (0..LEN*LEN).collect();
-        let mut result = Vec::with_capacity(LEN*LEN);
+        let mut index: Vec<usize> = (0..LEN).collect();
+        let mut result = Vec::with_capacity(LEN);
         index.shuffle(&mut rng);
         debug!("index for value = {:?}", index);
         for i in index.iter() {
