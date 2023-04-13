@@ -1,0 +1,126 @@
+use std::marker::PhantomData;
+
+pub(crate) type Tree<U, T> = Box<Node<U, T>>;
+
+pub trait Key<U: Copy> {
+    fn key(&self) -> U;
+}
+
+#[derive(Default)]
+pub struct NodePosition<U, T> {
+    pub node: Tree<U, T>,
+    pub pos: usize,
+    phantom: PhantomData<U>
+}
+
+#[derive(Clone, PartialEq, Debug, Default)]
+pub(crate) enum NodeType {
+    #[default]
+    Leaf,
+    Regular,
+}
+
+#[derive(Clone, Default, Debug)]
+pub struct Node<U, T> {
+    node_type: NodeType,
+    key: Vec<T>,
+    children: Vec<Option<Tree<U, T>>>,
+    key_count: usize,
+    phantom: PhantomData<U>
+}
+
+impl<U, T> Node<U, T>
+    where
+        T: Clone + Default + Key<U>,
+        U: Copy + Default + PartialEq + PartialOrd,
+{
+    pub(crate) fn new(node_type: NodeType) -> Tree<U, T> {
+        Box::new(Self{
+            node_type,
+            ..Default::default() 
+        })
+    }
+
+    pub(crate) fn is_full(&self, order: usize) -> bool {
+        self.key_count() == 2 * order - 1
+    }
+
+    pub fn children(&self) -> &[Option<Tree<U, T>>] {
+        &self.children[..]
+    }
+
+    pub(crate) fn add_child(&mut self, node: Tree<U, T>) {
+        self.children.push(Some(node));
+    }
+
+    pub(crate) fn get_type(&self) -> NodeType {
+        self.node_type.clone()
+    }
+
+    pub fn key_count(&self) -> usize {
+        self.key_count
+    }
+
+    fn set_key_count(&mut self, key_count: usize) {
+        self.key_count = key_count;
+    }
+
+    pub fn is_leaf(&self) -> bool {
+        self.node_type == NodeType::Leaf
+    }
+
+    pub(crate) fn search(&self, key: T) -> Option<NodePosition<U, T>> {
+        let pos = self.key.iter().position(|k| k.key() > key.key());
+        match pos {
+            Some(i) if self.key[i].key() == key.key() => {
+                Some(NodePosition {
+                    node: Box::new(self.clone()),
+                    pos: i,
+                    ..Default::default()
+                })
+            } 
+            Some(_) if self.is_leaf() => None,
+            Some(i) => self.children[i].as_ref().unwrap().search(key),
+            None => self.children[0].as_ref().unwrap().search(key),
+        }
+    }
+
+    pub(crate) fn split_child(&mut self, i: usize, order: usize) {
+        let mut child = self.children[i].take().unwrap();
+        let mut sibling = Node::new(child.get_type());
+        sibling.set_key_count(order - 1);
+        sibling.key = child.key.split_off(order - 1);
+        if !child.is_leaf() {
+            sibling.children = child.children.split_off(order);
+        }
+        child.set_key_count(order - 1);
+        self.key.insert(i, child.key[order].clone());
+        self.children.insert(i, Some(child));
+        self.children.insert(i + 1, Some(sibling));
+        self.set_key_count(self.key_count() + 1);
+    }
+
+    pub(crate) fn insert_nonfull(&mut self, key: T, order: usize) {
+        let pos = self.key.iter().rev().position(|k| k.key() < key.key());
+        match self.is_leaf() {
+            true => {
+                match pos {
+                    Some(i) => self.key.insert(i + 1, key),
+                    None => self.key.push(key),
+                }
+            }
+            false => {
+                if let Some(i) = pos {
+                    let mut i = i + 1;
+                    if self.children[i].as_ref().unwrap().is_full(order) {
+                        self.split_child(i, order);
+                        if key.key() > self.key[i].key() {
+                            i += 1;
+                        }
+                    }
+                    self.children[i].as_mut().unwrap().insert_nonfull(key, order);
+                }
+            }
+        }
+    }
+}
