@@ -18,7 +18,6 @@ mod tests {
     #[derive(Clone, Default, Debug, PartialEq)]
     struct Data<U> {
         key: U,
-        #[allow(dead_code)]
         data: String,
     }
 
@@ -37,16 +36,24 @@ mod tests {
     #[test]
     fn found_node() {
         init_logger();
+        const SEARCH_CHAR: char = 'm';
         let mut rng = thread_rng();
         let mut btree = BTree::new(3);
+        let mut s = "test".to_owned();
 
-        for c in "string".chars() {
-            let data = Data::new(c, &Alphanumeric.sample_string(&mut rng, 7));
+        for c in "qwertyasdfglkjhzxcvmnbpoiu".chars() {
+            let d = Alphanumeric.sample_string(&mut rng, 7);
+            if c == SEARCH_CHAR {
+                s = d.clone();
+            }
+            let data = Data::new(c, &d);
+            debug!("\nvalue = {:?}", data);
             btree.insert(data)
         }
-        match btree.search('s') {
-            Some(NodePosition{node, pos: i, ..}) => {
-                debug!("\npos = {i}, node = {:#?}", node)
+        match btree.search(SEARCH_CHAR) {
+            Some(NodePosition{node, pos, ..}) => {
+                debug!("\npos = {pos}, node = {:#?}", node);
+                assert_eq!(node.get_key(pos), Some(&Data{key: SEARCH_CHAR, data: s}));
             }
             None => assert!(false, "node not found"),
         }
