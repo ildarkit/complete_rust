@@ -34,11 +34,19 @@ impl<U, T> Node<U, T>
         T: Clone + Default + Key<U>,
         U: Copy + Default + PartialEq + PartialOrd,
 {
-    pub(crate) fn new(node_type: NodeType) -> Tree<U, T> {
+    fn new(node_type: NodeType) -> Tree<U, T> {
         Box::new(Self{
             node_type,
             ..Default::default() 
         })
+    }
+
+    pub fn new_leaf() -> Tree<U, T> {
+        Self::new(NodeType::Leaf)
+    }
+
+    pub fn new_regular() -> Tree<U, T> {
+        Self::new(NodeType::Regular)
     }
 
     pub(crate) fn is_full(&self, order: usize) -> bool {
@@ -57,12 +65,23 @@ impl<U, T> Node<U, T>
         self.node_type.clone()
     }
 
+    pub fn get_key(&self, pos: usize) -> Option<&T> {
+        match self.key.len() > pos {
+            true => Some(&self.key[pos]),
+            false => None,
+        }
+    }
+
     pub fn key_count(&self) -> usize {
         self.key_count
     }
 
     fn set_key_count(&mut self, key_count: usize) {
         self.key_count = key_count;
+    }
+
+    fn inc_key_count(&mut self) {
+        self.key_count += 1;
     }
 
     pub fn is_leaf(&self) -> bool {

@@ -1,6 +1,6 @@
 use std::fmt;
 use log::debug;
-use crate::node::{Tree, NodeType, NodePosition, Node, Key};
+use crate::node::{Tree, NodePosition, Node, Key};
 
 #[derive(Default)]
 pub struct BTree<U, T> {
@@ -16,7 +16,7 @@ impl<U, T> BTree<U, T>
 {
     pub fn new(order: usize) -> Self {
         Self {
-            root: Some(Node::new(NodeType::Leaf)),
+            root: Some(Node::new_leaf()),
             order,
             ..Default::default()
         }
@@ -34,12 +34,12 @@ impl<U, T> BTree<U, T>
             Some(mut root) => {
                 debug!("\nroot = {:#?}", root);
                 if root.is_full(self.order) {
-                    let mut node = Node::new(
-                        NodeType::Regular
-                    );
+                    debug!("\nnode is full");
+                    let mut node = Node::new_regular();
                     node.add_child(root);
-                    node.split_child(1, self.order);
+                    node.split_child(0, self.order);
                     node.insert_nonfull(value, self.order);
+                    self.inc_length();
                     Some(node)
                 } else {
                     root.insert_nonfull(value, self.order);
@@ -48,7 +48,7 @@ impl<U, T> BTree<U, T>
             }
             None => { unreachable!() },
         };
-        self.inc_length();
+        debug!("\nroot after insert = {:#?}", self.root);
     }
 
     fn inc_length(&mut self) {
