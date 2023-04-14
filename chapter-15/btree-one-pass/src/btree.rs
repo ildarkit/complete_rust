@@ -22,14 +22,14 @@ impl<U, T> BTree<U, T>
         }
     }
 
-    pub fn search(&self, key: T) -> Option<NodePosition<U, T>> {
+    pub fn search(&self, key: U) -> Option<NodePosition<U, T>> {
         match self.root {
             Some(ref root) => root.search(key),
             None => unreachable!(),
         }
     }
 
-    pub fn insert(&mut self, key: T) {
+    pub fn insert(&mut self, value: T) {
         self.root = match self.root.take() {
             Some(mut root) => {
                 debug!("\nroot = {:#?}", root);
@@ -39,10 +39,10 @@ impl<U, T> BTree<U, T>
                     );
                     node.add_child(root);
                     node.split_child(1, self.order);
-                    node.insert_nonfull(key, self.order);
+                    node.insert_nonfull(value, self.order);
                     Some(node)
                 } else {
-                    root.insert_nonfull(key, self.order);
+                    root.insert_nonfull(value, self.order);
                     Some(root)
                 }
             }

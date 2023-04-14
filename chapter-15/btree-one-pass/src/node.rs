@@ -6,7 +6,7 @@ pub trait Key<U: Copy> {
     fn key(&self) -> U;
 }
 
-#[derive(Default)]
+#[derive(Debug, Default)]
 pub struct NodePosition<U, T> {
     pub node: Tree<U, T>,
     pub pos: usize,
@@ -69,10 +69,10 @@ impl<U, T> Node<U, T>
         self.node_type == NodeType::Leaf
     }
 
-    pub(crate) fn search(&self, key: T) -> Option<NodePosition<U, T>> {
-        let pos = self.key.iter().position(|k| k.key() > key.key());
+    pub(crate) fn search(&self, key: U) -> Option<NodePosition<U, T>> {
+        let pos = self.key.iter().position(|k| k.key() > key);
         match pos {
-            Some(i) if self.key[i].key() == key.key() => {
+            Some(i) if self.key[i].key() == key => {
                 Some(NodePosition {
                     node: Box::new(self.clone()),
                     pos: i,
@@ -95,18 +95,18 @@ impl<U, T> Node<U, T>
         }
         child.set_key_count(order - 1);
         self.key.insert(i, child.key[order].clone());
-        self.children.insert(i, Some(child));
+        self.children[i].replace(child);
         self.children.insert(i + 1, Some(sibling));
         self.set_key_count(self.key_count() + 1);
     }
 
-    pub(crate) fn insert_nonfull(&mut self, key: T, order: usize) {
-        let pos = self.key.iter().rev().position(|k| k.key() < key.key());
+    pub(crate) fn insert_nonfull(&mut self, value: T, order: usize) {
+        let pos = self.key.iter().rev().position(|k| k.key() < value.key());
         match self.is_leaf() {
             true => {
                 match pos {
-                    Some(i) => self.key.insert(i + 1, key),
-                    None => self.key.push(key),
+                    Some(i) => self.key.insert(i + 1, value),
+                    None => self.key.push(value),
                 }
             }
             false => {
@@ -114,11 +114,11 @@ impl<U, T> Node<U, T>
                     let mut i = i + 1;
                     if self.children[i].as_ref().unwrap().is_full(order) {
                         self.split_child(i, order);
-                        if key.key() > self.key[i].key() {
+                        if value.key() > self.key[i].key() {
                             i += 1;
                         }
                     }
-                    self.children[i].as_mut().unwrap().insert_nonfull(key, order);
+                    self.children[i].as_mut().unwrap().insert_nonfull(value, order);
                 }
             }
         }
