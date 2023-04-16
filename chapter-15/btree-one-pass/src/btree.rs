@@ -1,6 +1,6 @@
 use std::fmt;
 use log::debug;
-use crate::node::{Tree, NodePosition, Node, Key};
+use crate::node::{Tree, Node, Key};
 
 #[derive(Default)]
 pub struct BTree<U, T> {
@@ -22,7 +22,7 @@ impl<U, T> BTree<U, T>
         }
     }
 
-    pub fn search(&self, key: U) -> Option<NodePosition<U, T>> {
+    pub fn search(&self, key: U) -> Option<&T> {
         match self.root {
             Some(ref root) => root.search(key),
             None => unreachable!(),

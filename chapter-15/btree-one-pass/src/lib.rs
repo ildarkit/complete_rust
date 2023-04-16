@@ -73,13 +73,9 @@ mod tests {
             debug!("\ndata = {:?}", data);
             btree.insert(data)
         }
-        match btree.search(search_char) {
-            Some(NodePosition{node, pos, ..}) => {
-                debug!("\npos = {pos}, char = {search_char}, node = {:#?}", node);
-                assert_eq!(node.get_key(pos), Some(&Data{key: search_char, data: s}));
-            }
-            None => assert!(false, "node not found"),
-        }
+        assert_eq!(btree.search(search_char),
+            Some(&Data{key: search_char, data: s})
+        );
     }
 
     #[test]
@@ -105,17 +101,9 @@ mod tests {
                     debug!("\nvalue = {:?}", data);
                     btree.insert(data)
                 }
-                match btree.search(search_char) {
-                    Some(NodePosition{node, pos, ..}) => {
-                        debug!("\npos = {pos}, char = {search_char}, node = {:#?}", node);
-                        assert_eq!(node.get_key(pos),
-                            Some(&Data{key: search_char, data: s.clone()}),
-                            "\nerror: {search_char}, {test_slice:?}"
-                        );
-                    }
-                    None => assert!(false,
-                        "\nnot found {search_char} in {test_slice:?}"),
-                }
+                assert_eq!(btree.search(search_char),
+                    Some(&Data{key: search_char, data: s})
+                );
             }
         }
     }

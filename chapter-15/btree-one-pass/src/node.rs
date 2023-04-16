@@ -7,13 +7,6 @@ pub trait Key<U: Copy> {
     fn key(&self) -> U;
 }
 
-#[derive(Debug, Default)]
-pub struct NodePosition<U, T> {
-    pub node: Tree<U, T>,
-    pub pos: usize,
-    phantom: PhantomData<U>
-}
-
 #[derive(Clone, PartialEq, Debug, Default)]
 pub enum NodeType {
     #[default]
@@ -72,20 +65,25 @@ impl<U, T> Node<U, T>
         self.node_type == NodeType::Leaf
     }
 
-    pub(crate) fn search(&self, key: U) -> Option<NodePosition<U, T>> {
+    fn key_is_equal(&self, pos: usize, key: U) -> bool {
+        self.key[pos].key() == key
+    }
+
+    pub(crate) fn search(&self, key: U) -> Option<&T> {
         let pos = self.key.iter().rev()
             .position(|k| k.key() <= key)
             .map(|p| self.key.len() - 1 - p);
         debug!("\nsearch pos = {:?}", pos);
         match pos {
-            Some(i) if self.key[i].key() == key => {
-                Some(NodePosition {
-                    node: Box::new(self.clone()),
-                    pos: i,
-                    ..Default::default()
-                })
-            } 
-            Some(i) => self.children[i + 1].as_ref().unwrap().search(key), 
+            Some(i) => {
+                match self.key_is_equal(i, key) {
+                    true => self.get_key(i),
+                    false => {
+                        self.children[i + 1].as_ref().unwrap()
+                            .search(key)
+                    }
+                }
+            }
             None if self.is_leaf() => None,
             None => self.children[0].as_ref().unwrap().search(key),
         }
