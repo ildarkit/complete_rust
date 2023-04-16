@@ -46,7 +46,7 @@ impl<U, T> BTree<U, T>
                     Some(root)
                 }
             }
-            None => { unreachable!() },
+            None => unreachable!(),
         };
         debug!("\nroot after insert = {:#?}", self.root);
     }
