@@ -1,3 +1,4 @@
+use log::debug;
 use std::marker::PhantomData;
 
 pub(crate) type Tree<U, T> = Box<Node<U, T>>;
@@ -14,7 +15,7 @@ pub struct NodePosition<U, T> {
 }
 
 #[derive(Clone, PartialEq, Debug, Default)]
-pub(crate) enum NodeType {
+pub enum NodeType {
     #[default]
     Leaf,
     Regular,
@@ -25,7 +26,6 @@ pub struct Node<U, T> {
     node_type: NodeType,
     key: Vec<T>,
     children: Vec<Option<Tree<U, T>>>,
-    key_count: usize,
     phantom: PhantomData<U>
 }
 
@@ -49,19 +49,15 @@ impl<U, T> Node<U, T>
         Self::new(NodeType::Regular)
     }
 
-    pub(crate) fn is_full(&self, order: usize) -> bool {
-        self.key_count() == 2 * order - 1
-    }
-
-    pub fn children(&self) -> &[Option<Tree<U, T>>] {
-        &self.children[..]
+    pub fn is_full(&self, order: usize) -> bool {
+        self.key.len() == 2 * order - 1
     }
 
     pub(crate) fn add_child(&mut self, node: Tree<U, T>) {
         self.children.push(Some(node));
     }
 
-    pub(crate) fn get_type(&self) -> NodeType {
+    fn get_type(&self) -> NodeType {
         self.node_type.clone()
     }
 
@@ -72,24 +68,15 @@ impl<U, T> Node<U, T>
         }
     }
 
-    pub fn key_count(&self) -> usize {
-        self.key_count
-    }
-
-    fn set_key_count(&mut self, key_count: usize) {
-        self.key_count = key_count;
-    }
-
-    fn inc_key_count(&mut self) {
-        self.key_count += 1;
-    }
-
     pub fn is_leaf(&self) -> bool {
         self.node_type == NodeType::Leaf
     }
 
     pub(crate) fn search(&self, key: U) -> Option<NodePosition<U, T>> {
-        let pos = self.key.iter().position(|k| k.key() > key);
+        let pos = self.key.iter().rev()
+            .position(|k| k.key() <= key)
+            .map(|p| self.key.len() - 1 - p);
+        debug!("\nsearch pos = {:?}", pos);
         match pos {
             Some(i) if self.key[i].key() == key => {
                 Some(NodePosition {
@@ -98,8 +85,8 @@ impl<U, T> Node<U, T>
                     ..Default::default()
                 })
             } 
-            Some(_) if self.is_leaf() => None,
-            Some(i) => self.children[i].as_ref().unwrap().search(key),
+            Some(i) => self.children[i + 1].as_ref().unwrap().search(key), 
+            None if self.is_leaf() => None,
             None => self.children[0].as_ref().unwrap().search(key),
         }
     }
@@ -107,38 +94,32 @@ impl<U, T> Node<U, T>
     pub(crate) fn split_child(&mut self, i: usize, order: usize) {
         let mut child = self.children[i].take().unwrap();
         let mut sibling = Node::new(child.get_type());
-        sibling.set_key_count(order - 1);
-        sibling.key = child.key.split_off(order - 1);
+        
+        sibling.key = child.key.split_off(order);
+        self.key.insert(i, child.key.remove(order - 1));
         if !child.is_leaf() {
             sibling.children = child.children.split_off(order);
         }
-        child.set_key_count(order - 1);
-        self.key.insert(i, child.key[order].clone());
         self.children[i].replace(child);
         self.children.insert(i + 1, Some(sibling));
-        self.set_key_count(self.key_count() + 1);
     }
 
     pub(crate) fn insert_nonfull(&mut self, value: T, order: usize) {
-        let pos = self.key.iter().rev().position(|k| k.key() < value.key());
+        let mut pos = self.key.iter().rev()
+            .position(|k| k.key() < value.key())
+            .map_or(0, |p| self.key.len() - p);
+        debug!("\ninsert pos = {:?}", pos);
         match self.is_leaf() {
-            true => {
-                match pos {
-                    Some(i) => self.key.insert(i + 1, value),
-                    None => self.key.push(value),
-                }
-            }
+            true => self.key.insert(pos, value),
             false => {
-                if let Some(i) = pos {
-                    let mut i = i + 1;
-                    if self.children[i].as_ref().unwrap().is_full(order) {
-                        self.split_child(i, order);
-                        if value.key() > self.key[i].key() {
-                            i += 1;
-                        }
+                if self.children[pos].as_ref().unwrap().is_full(order) {
+                    self.split_child(pos, order);
+                    if value.key() > self.key[pos].key() {
+                        pos += 1;
                     }
-                    self.children[i].as_mut().unwrap().insert_nonfull(value, order);
                 }
+                self.children[pos].as_mut().unwrap()
+                    .insert_nonfull(value, order);
             }
         }
     }
