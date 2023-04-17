@@ -46,6 +46,14 @@ impl<U, T> Node<U, T>
         self.key.len() == 2 * order - 1
     }
 
+    pub fn keys(&self) -> &[T] {
+        &self.key[..]
+    }
+
+    pub fn children(&self) -> &[Option<Tree<U, T>>] {
+        &self.children[..]
+    }
+
     pub(crate) fn add_child(&mut self, node: Tree<U, T>) {
         self.children.push(Some(node));
     }

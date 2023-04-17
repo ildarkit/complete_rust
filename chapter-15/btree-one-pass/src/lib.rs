@@ -42,7 +42,7 @@ mod tests {
     fn not_found_node() {
         let mut rng = thread_rng();
         let mut btree = BTree::new(3);
-        let mut chars: Vec<char> = ('a'..'z').collect();
+        let mut chars: Vec<char> = ('a'..='z').collect();
         chars.shuffle(&mut rng);
         let search_char = 'K';
 
@@ -60,7 +60,7 @@ mod tests {
         let mut rng = thread_rng();
         let mut btree = BTree::new(3);
         let mut s = "test".to_owned();
-        let mut chars: Vec<char> = ('a'..'z').collect();
+        let mut chars: Vec<char> = ('a'..='z').collect();
         chars.shuffle(&mut rng);
         let search_char = chars[rng.gen_range(0..chars.len())];
 
@@ -83,7 +83,7 @@ mod tests {
     fn found_node_stress() {
         init_logger();
         let mut rng = thread_rng();
-        let mut chars: Vec<char> = ('a'..'z').collect();
+        let mut chars: Vec<char> = ('a'..='z').collect();
 
         for i in 5..chars.len() {
             for _ in 0..10000 {
@@ -106,5 +106,23 @@ mod tests {
                 );
             }
         }
+    }
+
+    #[test]
+    fn btree_walk_in_order() {
+        let mut rng = thread_rng();
+        let mut btree = BTree::new(3);
+        let mut chars: Vec<char> = ('a'..='z').collect();
+        let origin = chars.clone();
+        let mut result: Vec<char> = Vec::with_capacity(chars.capacity());
+        chars.shuffle(&mut rng);
+
+        for c in chars.iter() {
+            let d = Alphanumeric.sample_string(&mut rng, 7);
+            let data = Data::new(*c, &d);
+            btree.insert(data)
+        }
+        btree.walk(|data| result.push(data.key));
+        assert_eq!(origin, result);
     }
 }

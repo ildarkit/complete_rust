@@ -1,4 +1,5 @@
 use std::fmt;
+use std::iter::zip;
 use log::debug;
 use crate::node::{Tree, Node, Key};
 
@@ -49,6 +50,33 @@ impl<U, T> BTree<U, T>
             None => unreachable!(),
         };
         debug!("\nroot after insert = {:#?}", self.root);
+    }
+
+    pub fn walk(&self, mut callback: impl FnMut(&T) -> ()) {
+        self.walk_in_order(self.root.as_ref().unwrap(), &mut callback);
+    }
+
+    fn walk_in_order(&self, node: &Tree<U, T>, callback: &mut impl FnMut(&T) -> ()) {
+        match node.is_leaf() {
+            true => {
+                for key in node.keys() {
+                    callback(key);
+                }
+            }
+            false => {
+                let pair = zip(node.keys(), node.children());
+                for (key, child) in pair {
+                    self.walk_in_order(child.as_ref().unwrap(), callback);
+                    callback(key);
+                }
+                if let Some(last_child) = node.children().iter().rev().next() {
+                    self.walk_in_order(
+                        last_child.as_ref().unwrap(),
+                        callback
+                    );
+                }
+            }
+        }
     }
 
     fn inc_length(&mut self) {
