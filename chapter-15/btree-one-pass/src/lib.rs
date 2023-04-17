@@ -125,4 +125,23 @@ mod tests {
         btree.walk(|data| result.push(data.key));
         assert_eq!(origin, result);
     }
+
+    #[test]
+    fn delete_node() {
+        let mut rng = thread_rng();
+        let mut btree = BTree::new(3);
+        let mut chars: Vec<char> = ('a'..='z').collect();
+        let deleted = chars[rng.gen_range(0..chars.len())];
+        chars.shuffle(&mut rng);
+
+        for c in chars.iter() {
+            let d = Alphanumeric.sample_string(&mut rng, 7);
+            let data = Data::new(*c, &d);
+            btree.insert(data)
+        }
+        match btree.delete(&deleted) {
+            Some(Data{key, ..}) => assert_eq!(key, deleted),
+            None => assert!(false, "node with key {deleted} not deleted"),
+        }
+    }
 }

@@ -69,6 +69,13 @@ impl<U, T> Node<U, T>
         }
     }
 
+    pub fn remove_key(&mut self, pos: usize) -> Option<T> {
+        match self.key.len() > pos {
+            true => Some(self.key.remove(pos)),
+            false => None,
+        }
+    }
+
     pub fn is_leaf(&self) -> bool {
         self.node_type == NodeType::Leaf
     }
@@ -126,6 +133,22 @@ impl<U, T> Node<U, T>
                 }
                 self.children[pos].as_mut().unwrap()
                     .insert_nonfull(value, order);
+            }
+        }
+    }
+
+    pub(crate) fn delete(&mut self, value: &U, _order: &usize) -> Option<T> {
+        let pos = self.key.iter()
+            .position(|k| k.key() == *value);
+        match pos {
+            Some(i) => {
+                match self.is_leaf() {
+                    true => self.remove_key(i),
+                    false => unimplemented!(), 
+                }
+            }
+            None => {
+                unimplemented!()
             }
         }
     }

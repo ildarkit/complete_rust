@@ -52,6 +52,10 @@ impl<U, T> BTree<U, T>
         debug!("\nroot after insert = {:#?}", self.root);
     }
 
+    pub fn delete(&mut self, value: &U) -> Option<T> {
+        self.root.as_mut().unwrap().delete(value, &self.order)
+    }
+
     pub fn walk(&self, mut callback: impl FnMut(&T) -> ()) {
         self.walk_in_order(self.root.as_ref().unwrap(), &mut callback);
     }
