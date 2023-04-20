@@ -23,7 +23,7 @@ impl<U, T> BTree<U, T>
         }
     }
 
-    pub fn search(&self, key: U) -> Option<&T> {
+    pub fn search(&self, key: &U) -> Option<&T> {
         match self.root {
             Some(ref root) => root.search(key),
             None => unreachable!(),
@@ -34,16 +34,16 @@ impl<U, T> BTree<U, T>
         self.root = match self.root.take() {
             Some(mut root) => {
                 debug!("\nroot = {:#?}", root);
-                if root.is_full(self.order) {
+                if root.is_full(&self.order) {
                     debug!("\nnode is full");
                     let mut node = Node::new_regular();
                     node.add_child(root);
-                    node.split_child(0, self.order);
-                    node.insert_nonfull(value, self.order);
+                    node.split_child(0, &self.order);
+                    node.insert_nonfull(value, &self.order);
                     self.inc_length();
                     Some(node)
                 } else {
-                    root.insert_nonfull(value, self.order);
+                    root.insert_nonfull(value, &self.order);
                     Some(root)
                 }
             }

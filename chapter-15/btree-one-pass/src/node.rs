@@ -42,8 +42,8 @@ impl<U, T> Node<U, T>
         Self::new(NodeType::Regular)
     }
 
-    pub fn is_full(&self, order: usize) -> bool {
-        self.key.len() == 2 * order - 1
+    pub fn is_full(&self, order: &usize) -> bool {
+        self.key.len() == 2 * *order - 1
     }
 
     pub fn keys(&self) -> &[T] {
@@ -106,23 +106,22 @@ impl<U, T> Node<U, T>
         }
     }
 
-    pub(crate) fn split_child(&mut self, i: usize, order: usize) {
+    pub(crate) fn split_child(&mut self, i: usize, order: &usize) {
         let mut child = self.children[i].take().unwrap();
         let mut sibling = Node::new(child.get_type());
         
-        sibling.key = child.key.split_off(order);
-        self.key.insert(i, child.key.remove(order - 1));
+        sibling.key = child.key.split_off(*order);
+        self.key.insert(i, child.key.remove(*order - 1));
         if !child.is_leaf() {
-            sibling.children = child.children.split_off(order);
+            sibling.children = child.children.split_off(*order);
         }
         self.children[i].replace(child);
         self.children.insert(i + 1, Some(sibling));
     }
 
-    pub(crate) fn insert_nonfull(&mut self, value: T, order: usize) {
-        let mut pos = self.key.iter().rev()
-            .position(|k| k.key() < value.key())
-            .map_or(0, |p| self.key.len() - p);
+    pub(crate) fn insert_nonfull(&mut self, value: T, order: &usize) {
+        let mut pos = Self::key_position(&self.key, &|k: &T| k.key() < value.key())
+            .map_or(0, |p| p + 1);
         debug!("\ninsert pos = {:?}", pos);
         match self.is_leaf() {
             true => self.key.insert(pos, value),
@@ -137,7 +136,7 @@ impl<U, T> Node<U, T>
                     .insert_nonfull(value, order);
             }
         }
-    }
+    } 
 
     pub(crate) fn delete(&mut self, value: &U, _order: &usize) -> Option<T> {
         let pos = self.key.iter()
