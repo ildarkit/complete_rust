@@ -136,27 +136,24 @@ impl<U, T> Node<U, T>
                     .insert_nonfull(value, order);
             }
         }
-    } 
+    }
 
-    pub(crate) fn delete(&mut self, value: &U, order: &usize) -> Option<T> {
-        if self.search(value).is_none() {
-            return None;
-        }
+    pub(crate) fn delete(&mut self, value: &U, order: &usize) -> Option<T> { 
         let key_pos = self.key.iter()
-            .position(|k| k.key() > *value)
-            .map(|p| p - 1)
-            .unwrap();
-        self.delete_subtree(value, &key_pos, order)
+            .position(|k| k.key() >= *value)
+            .map(|p| if self.key[p].key() == *value {p} else {p - 1});
+        match key_pos {
+            Some(pos) => self.delete_subtree(value, &pos, order),
+            None => None,
+        }
     }
 
     fn delete_subtree(&mut self, value: &U, pos: &usize, order: &usize)
         -> Option<T>
     {
-        if self.is_leaf() {
-            // from leaf just remove
-            return self.remove_key(pos);
-        }
-        match self.key_is_equal(pos, value) {
+         match self.key_is_equal(pos, value) {
+            // remove key from leaf
+            true if self.is_leaf() => self.remove_key(pos),
             // key in the regular node
             true => {
                 let replace = self.remove_child_key(value, pos, order);
