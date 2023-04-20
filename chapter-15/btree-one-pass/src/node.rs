@@ -138,19 +138,92 @@ impl<U, T> Node<U, T>
         }
     } 
 
-    pub(crate) fn delete(&mut self, value: &U, _order: &usize) -> Option<T> {
-        let pos = self.key.iter()
-            .position(|k| k.key() == *value);
-        match pos {
-            Some(i) => {
-                match self.is_leaf() {
-                    true => self.remove_key(i),
-                    false => unimplemented!(), 
+    pub(crate) fn delete(&mut self, value: &U, order: &usize) -> Option<T> {
+        if self.search(value).is_none() {
+            return None;
+        }
+        let key_pos = self.key.iter()
+            .position(|k| k.key() > *value)
+            .map(|p| p - 1)
+            .unwrap();
+        self.delete_subtree(value, &key_pos, order)
+    }
+
+    fn delete_subtree(&mut self, value: &U, pos: &usize, order: &usize)
+        -> Option<T>
+    {
+        if self.is_leaf() {
+            // from leaf just remove
+            return self.remove_key(pos);
+        }
+        match self.key_is_equal(pos, value) {
+            // key in the regular node
+            true => {
+                let replace = self.remove_child_key(value, pos, order);
+                match replace {
+                    // at least <order> key have
+                    Some(replace) => {
+                        self.key[*pos] = replace.clone();
+                        Some(replace)
+                    }
+                    // remove all keys from right child
+                    // (include key from parent) to the left child
+                    // then remove right child and delete key from left child recursively
+                    None => {
+                        let deleted = self.remove_key(pos).unwrap();
+                        self.children[*pos].as_mut().unwrap().key
+                            .push(deleted);
+                        let key_pos = self.children[*pos].as_mut().unwrap()
+                            .key_len() - 1;
+                        let sibling_keys = self.children[*pos + 1].as_ref().unwrap()
+                            .key.clone();
+                        self.children[*pos].as_mut().unwrap().key
+                            .extend_from_slice(&sibling_keys[..]);
+                        self.children.remove(pos + 1);
+                        self.children[*pos].as_mut().unwrap()
+                            .delete_subtree(value, &key_pos, order)
+                    }
                 }
             }
-            None => {
+            false => {
                 unimplemented!()
             }
         }
+    }
+
+    fn key_position(key: &Vec<T>, callback: &impl Fn(&T) -> bool)
+        -> Option<usize>
+    {
+        key.iter().rposition(callback)
+    }
+
+    fn at_least_order(&self, order: &usize) -> bool {
+        self.key_len() >= *order
+    }
+
+    fn remove_from(&mut self, value: &U, pos: &usize, order: &usize)
+        -> Option<T>
+    {
+        if self.at_least_order(order) {
+            self.delete_subtree(value, pos, order)
+        } else { None }
+    }
+
+    fn remove_child_key(&mut self, value: &U, pos: &usize, order: &usize)
+        -> Option<T>
+    {
+        let mut replace = None;
+        for i in 0..=1 {
+            let child = self.children[*pos + i].as_mut().unwrap();
+            let neighbore = if i == 0 {
+                child.key_len() - 1
+            } else { 0 };
+            replace = child
+                .remove_from(value, &neighbore, order);
+            if replace.is_some() {
+                break;
+            }
+        }
+        replace
     }
 }
