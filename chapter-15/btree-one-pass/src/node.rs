@@ -50,6 +50,10 @@ impl<U, T> Node<U, T>
         &self.key[..]
     }
 
+    pub fn key_len(&self) -> usize {
+        self.key.len()
+    }
+
     pub fn children(&self) -> &[Option<Tree<U, T>>] {
         &self.children[..]
     }
@@ -62,16 +66,16 @@ impl<U, T> Node<U, T>
         self.node_type.clone()
     }
 
-    pub fn get_key(&self, pos: usize) -> Option<&T> {
-        match self.key.len() > pos {
-            true => Some(&self.key[pos]),
+    pub fn get_key(&self, pos: &usize) -> Option<&T> {
+        match self.key.len() > *pos {
+            true => Some(&self.key[*pos]),
             false => None,
         }
     }
 
-    pub fn remove_key(&mut self, pos: usize) -> Option<T> {
-        match self.key.len() > pos {
-            true => Some(self.key.remove(pos)),
+    pub fn remove_key(&mut self, pos: &usize) -> Option<T> {
+        match self.key.len() > *pos {
+            true => Some(self.key.remove(*pos)),
             false => None,
         }
     }
@@ -80,21 +84,19 @@ impl<U, T> Node<U, T>
         self.node_type == NodeType::Leaf
     }
 
-    fn key_is_equal(&self, pos: usize, key: U) -> bool {
-        self.key[pos].key() == key
+    fn key_is_equal(&self, pos: &usize, key: &U) -> bool {
+        self.key[*pos].key() == *key
     }
 
-    pub(crate) fn search(&self, key: U) -> Option<&T> {
-        let pos = self.key.iter().rev()
-            .position(|k| k.key() <= key)
-            .map(|p| self.key.len() - 1 - p);
+    pub(crate) fn search(&self, key: &U) -> Option<&T> {
+        let pos = Self::key_position(&self.key, &|k: &T| k.key() <= *key);
         debug!("\nsearch pos = {:?}", pos);
         match pos {
-            Some(i) => {
+            Some(ref i) => {
                 match self.key_is_equal(i, key) {
                     true => self.get_key(i),
                     false => {
-                        self.children[i + 1].as_ref().unwrap()
+                        self.children[*i + 1].as_ref().unwrap()
                             .search(key)
                     }
                 }

@@ -35,7 +35,7 @@ mod tests {
     fn search_in_empty_btree() {
         let btree: BTree<char, Data<char>> = BTree::new(3); 
         let search_char = 'a';
-        assert!(btree.search(search_char).is_none());
+        assert!(btree.search(&search_char).is_none());
     }
 
     #[test]
@@ -51,11 +51,11 @@ mod tests {
             let data = Data::new(*c, &d);
             btree.insert(data)
         }
-        assert!(btree.search(search_char).is_none());
+        assert!(btree.search(&search_char).is_none());
     }
 
     #[test]
-    fn found_node() {
+    fn founded_node() {
         init_logger();
         let mut rng = thread_rng();
         let mut btree = BTree::new(3);
@@ -73,7 +73,7 @@ mod tests {
             debug!("\ndata = {:?}", data);
             btree.insert(data)
         }
-        assert_eq!(btree.search(search_char),
+        assert_eq!(btree.search(&search_char),
             Some(&Data{key: search_char, data: s})
         );
     }
@@ -101,7 +101,7 @@ mod tests {
                     debug!("\nvalue = {:?}", data);
                     btree.insert(data)
                 }
-                assert_eq!(btree.search(search_char),
+                assert_eq!(btree.search(&search_char),
                     Some(&Data{key: search_char, data: s})
                 );
             }
