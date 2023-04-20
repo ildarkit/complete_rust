@@ -140,10 +140,14 @@ impl<U, T> Node<U, T>
 
     pub(crate) fn delete(&mut self, value: &U, order: &usize) -> Option<T> { 
         let key_pos = self.key.iter()
-            .position(|k| k.key() >= *value)
-            .map(|p| if self.key[p].key() == *value {p} else {p - 1});
+            .position(|k| k.key() >= *value);
         match key_pos {
-            Some(pos) => self.delete_subtree(value, &pos, order),
+            Some(ref pos) => {
+                if *pos == 0 && self.key[*pos].key() > *value {
+                    return None;
+                }
+                self.delete_subtree(value, pos, order)
+            }
             None => None,
         }
     }
