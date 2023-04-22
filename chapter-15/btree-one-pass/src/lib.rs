@@ -144,4 +144,32 @@ mod tests {
             None => assert!(false, "node with key {deleted} not deleted"),
         }
     }
+
+    #[test]
+    #[ignore = "delete key test in btree on random input"]
+    fn delete_node_stress() {
+        init_logger();
+        let mut rng = thread_rng();
+        let mut chars: Vec<char> = ('a'..='z').collect();
+
+        for i in 5..chars.len() {
+            for _ in 0..10000 {
+                let mut btree = BTree::new(3);
+                chars.shuffle(&mut rng);
+                let test_slice = &chars[..i];
+                let deleted = chars[rng.gen_range(0..i)]; 
+                for c in test_slice {
+                    let d = Alphanumeric.sample_string(&mut rng, 7); 
+                    let data = Data::new(*c, &d);
+                    btree.insert(data)
+                }
+                debug!("\nchars = {:?}", test_slice);
+                debug!("\ndeleted key = {}", deleted);
+                match btree.delete(&deleted) {
+                    Some(Data{key, ..}) => assert_eq!(key, deleted),
+                    None => assert!(false, "node with key {deleted} not deleted"),
+                }
+            }
+        }
+    }
 }
