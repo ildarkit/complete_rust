@@ -46,6 +46,14 @@ impl<U, T> Node<U, T>
         self.key.len() == 2 * *order - 1
     }
 
+    pub fn is_empty(&self) -> bool {
+        self.key.len() == 0
+    }
+
+    pub fn children_len(&self) -> usize {
+        self.children.len()
+    } 
+
     pub fn keys(&self) -> &[T] {
         &self.key[..]
     }
@@ -56,6 +64,14 @@ impl<U, T> Node<U, T>
 
     pub fn children(&self) -> &[Option<Tree<U, T>>] {
         &self.children[..]
+    }
+
+    fn mut_child(&mut self, pos: &usize) -> &mut Tree<U, T> {
+        self.children[*pos].as_mut().unwrap()
+    }
+
+    fn ref_child(&self, pos: &usize) -> &Tree<U, T> {
+        self.children[*pos].as_ref().unwrap()
     }
 
     pub(crate) fn add_child(&mut self, node: Tree<U, T>) {
@@ -96,13 +112,12 @@ impl<U, T> Node<U, T>
                 match self.key_is_equal(i, key) {
                     true => self.get_key(i),
                     false => {
-                        self.children[*i + 1].as_ref().unwrap()
-                            .search(key)
+                        self.ref_child(&(*i + 1)).search(key)
                     }
                 }
             }
             None if self.is_leaf() => None,
-            None => self.children[0].as_ref().unwrap().search(key),
+            None => self.ref_child(&0).search(key),
         }
     }
 
@@ -126,28 +141,23 @@ impl<U, T> Node<U, T>
         match self.is_leaf() {
             true => self.key.insert(pos, value),
             false => {
-                if self.children[pos].as_ref().unwrap().is_full(order) {
+                if self.ref_child(&pos).is_full(order) {
                     self.split_child(pos, order);
                     if value.key() > self.key[pos].key() {
                         pos += 1;
                     }
                 }
-                self.children[pos].as_mut().unwrap()
-                    .insert_nonfull(value, order);
+                self.mut_child(&pos).insert_nonfull(value, order);
             }
         }
     }
 
-    pub(crate) fn delete(&mut self, value: &U, order: &usize) -> Option<T> { 
-        debug!("\n delete key = {value}, order = {order}");
+    pub(crate) fn delete(&mut self, value: &U, order: &usize) -> Option<T> {
         let key_pos = self.key.iter()
             .position(|k| k.key() > *value)
             .map(|p| if p > 0 {p - 1} else {p});
         let key_pos = match key_pos {
             None => {
-                if self.key[self.key_len() - 1].key() < *value {
-                    return None;
-                }
                 if self.key[0].key() == *value {
                     0
                 } else {self.key_len() - 1}
@@ -167,39 +177,89 @@ impl<U, T> Node<U, T>
             true if self.is_leaf() => self.remove_key(pos),
             // key in the regular node
             true => {
-                let replace = self.remove_child_key(value, pos, order);
+                let replace = self.remove_child_key(pos, order);
                 match replace {
                     // at least <order> key have
                     Some(replace) => {
-                        self.key[*pos] = replace.clone();
-                        Some(replace)
+                        let deleted = self.key[*pos].clone();
+                        self.key[*pos] = replace;
+                        Some(deleted)
                     }
                     // remove all keys from right child
                     // (include key from parent) to the left child
                     // then remove right child and delete key from left child recursively
                     None => {
-                        let deleted = self.remove_key(pos).unwrap();
-                        self.children[*pos].as_mut().unwrap().key
-                            .push(deleted);
-                        let key_pos = self.children[*pos].as_mut().unwrap()
-                            .key_len() - 1;
-                        let sibling_keys = self.children[*pos + 1].as_ref().unwrap()
-                            .key.clone();
-                        self.children[*pos].as_mut().unwrap().key
+                        let split_key = self.remove_key(pos).unwrap();
+                        self.mut_child(pos).key.push(split_key);
+                        let key_pos = self.ref_child(pos).key_len() - 1;
+                        let sibling_keys = self.ref_child(&(pos + 1)).key.clone();
+                        self.mut_child(pos).key
                             .extend_from_slice(&sibling_keys[..]);
+                        let sibling_children = self.ref_child(&(*pos + 1))
+                            .children.clone();
+                        self.mut_child(pos).children
+                            .extend_from_slice(&sibling_children[..]);
                         self.children.remove(pos + 1);
-                        self.children[*pos].as_mut().unwrap()
+                        self.mut_child(pos)
                             .delete_subtree(value, &key_pos, order)
                     }
                 }
             }
+            // key not found in the node
+            // search in subtree
             false => {
-                unimplemented!()
+                let (mut child_pos, sibling_pos) = match self.key[*pos].key() < *value {
+                    true => (*pos + 1, *pos),
+                    false => (*pos, *pos + 1),
+                };
+                debug!("\nchild = {child_pos}, sibling = {sibling_pos}");
+                if !self.ref_child(&child_pos).at_least_order(order) {
+                    if self.ref_child(&sibling_pos).at_least_order(order) {
+                        let split_key = self.key[*pos].clone();
+                        let remove_key = match child_pos > sibling_pos {
+                            true => {
+                                self.mut_child(&child_pos).key.insert(0, split_key);
+                                let sibling_child = self.mut_child(&sibling_pos)
+                                    .children.pop();
+                                if let Some(sibling_child) = sibling_child {
+                                    self.mut_child(&child_pos).children
+                                        .insert(0, sibling_child);
+                                }
+                                self.ref_child(&sibling_pos).key_len() - 1
+                            }
+                            false => {
+                                self.mut_child(&child_pos).key.push(split_key);
+                                if self.ref_child(&sibling_pos).children.len() > 0 {
+                                    let sibling_child = self.mut_child(&sibling_pos)
+                                        .children.remove(0);
+                                    self.mut_child(&child_pos).children.push(sibling_child);
+                                }
+                                0
+                            }
+                        };
+                        let sibling_key = self.mut_child(&sibling_pos)
+                            .remove_key(&remove_key);
+                        self.key[*pos] = sibling_key.unwrap();
+                    } else {
+                        let split_key = self.remove_key(pos).unwrap();
+                        self.mut_child(pos).key.push(split_key);
+                        let sibling_keys = self.ref_child(&(*pos + 1)).key.clone();
+                        self.mut_child(pos).key
+                            .extend_from_slice(&sibling_keys[..]);
+                        let sibling_children = self.ref_child(&(*pos + 1))
+                            .children.clone();
+                        self.mut_child(pos).children
+                            .extend_from_slice(&sibling_children[..]);
+                        self.children.remove(*pos + 1);
+                        child_pos = *pos;
+                    }
+                };
+                self.mut_child(&child_pos).delete(value, order)
             }
         }
     }
 
-    fn key_position(key: &Vec<T>, callback: &impl Fn(&T) -> bool)
+    fn key_position(key: &[T], callback: &impl Fn(&T) -> bool)
         -> Option<usize>
     {
         key.iter().rposition(callback)
@@ -217,17 +277,17 @@ impl<U, T> Node<U, T>
         } else { None }
     }
 
-    fn remove_child_key(&mut self, value: &U, pos: &usize, order: &usize)
+    fn remove_child_key(&mut self, pos: &usize, order: &usize)
         -> Option<T>
     {
         let mut replace = None;
         for i in 0..=1 {
-            let child = self.children[*pos + i].as_mut().unwrap();
+            let child = self.mut_child(&(*pos + i));
             let neighbore = if i == 0 {
                 child.key_len() - 1
             } else { 0 };
-            replace = child
-                .remove_from(value, &neighbore, order);
+            replace = child.remove_from(&child.key[neighbore].key(),
+                &neighbore, order);
             if replace.is_some() {
                 break;
             }

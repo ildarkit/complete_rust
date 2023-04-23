@@ -53,14 +53,26 @@ impl<U, T> BTree<U, T>
     }
 
     pub fn delete(&mut self, value: &U) -> Option<T> {
-        self.root.as_mut().unwrap().delete(value, &self.order)
+        let deleted = self.root.as_mut().unwrap().delete(value, &self.order);
+        self.root = match self.root.take() {
+            Some(mut root) => {
+                if root.is_empty() {
+                    root = root.children()[0].clone().unwrap();
+                    self.dec_length();
+                }
+                Some(root)
+            }
+            None => unreachable!(),
+        };
+        debug!("\nroot after delete = {:#?}", self.root);
+        deleted
     }
 
-    pub fn walk(&self, mut callback: impl FnMut(&T) -> ()) {
-        self.walk_in_order(self.root.as_ref().unwrap(), &mut callback);
+    pub fn walk(&self, mut callback: impl FnMut(&T)) {
+        Self::walk_in_order(self.root.as_ref().unwrap(), &mut callback);
     }
 
-    fn walk_in_order(&self, node: &Tree<U, T>, callback: &mut impl FnMut(&T) -> ()) {
+    fn walk_in_order(node: &Tree<U, T>, callback: &mut impl FnMut(&T)) {
         match node.is_leaf() {
             true => {
                 for key in node.keys() {
@@ -70,11 +82,11 @@ impl<U, T> BTree<U, T>
             false => {
                 let pair = zip(node.keys(), node.children());
                 for (key, child) in pair {
-                    self.walk_in_order(child.as_ref().unwrap(), callback);
+                    Self::walk_in_order(child.as_ref().unwrap(), callback);
                     callback(key);
                 }
                 if let Some(last_child) = node.children().iter().rev().next() {
-                    self.walk_in_order(
+                    Self::walk_in_order(
                         last_child.as_ref().unwrap(),
                         callback
                     );
@@ -85,5 +97,9 @@ impl<U, T> BTree<U, T>
 
     fn inc_length(&mut self) {
         self.length += 1;
+    }
+
+    fn dec_length(&mut self) {
+        self.length -= 1;
     }
 }

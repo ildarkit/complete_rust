@@ -163,8 +163,8 @@ mod tests {
                     let data = Data::new(*c, &d);
                     btree.insert(data)
                 }
-                debug!("\nchars = {:?}", test_slice);
-                debug!("\ndeleted key = {}", deleted);
+                debug!("chars = {:?}", test_slice);
+                debug!("deleted key = {}", deleted);
                 match btree.delete(&deleted) {
                     Some(Data{key, ..}) => assert_eq!(key, deleted),
                     None => assert!(false, "node with key {deleted} not deleted"),
