@@ -50,10 +50,6 @@ impl<U, T> Node<U, T>
         self.key.len() == 0
     }
 
-    pub fn children_len(&self) -> usize {
-        self.children.len()
-    } 
-
     pub fn keys(&self) -> &[T] {
         &self.key[..]
     }

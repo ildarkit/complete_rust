@@ -172,4 +172,27 @@ mod tests {
             }
         }
     }
+
+    #[test]
+    fn delete_all_node() {
+        let mut rng = thread_rng();
+        let mut btree = BTree::new(3);
+        let mut chars: Vec<char> = ('a'..='z').collect();
+        chars.shuffle(&mut rng);
+        let deleted = chars.clone();
+        chars.shuffle(&mut rng);
+
+        for c in chars.iter() {
+            let d = Alphanumeric.sample_string(&mut rng, 7);
+            let data = Data::new(*c, &d);
+            btree.insert(data)
+        }
+        for c in deleted.iter() {
+            match btree.delete(c) {
+                Some(Data{key, ..}) => assert_eq!(key, *c),
+                None => assert!(false, "node with key {c} not deleted"),
+            }
+        } 
+        assert_eq!(btree.length(), 0);
+    }
 }

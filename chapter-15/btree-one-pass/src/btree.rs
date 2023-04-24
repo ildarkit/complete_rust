@@ -56,7 +56,7 @@ impl<U, T> BTree<U, T>
         let deleted = self.root.as_mut().unwrap().delete(value, &self.order);
         self.root = match self.root.take() {
             Some(mut root) => {
-                if root.is_empty() {
+                if root.is_empty() && root.children().len() > 0 {
                     root = root.children()[0].clone().unwrap();
                     self.dec_length();
                 }
@@ -101,5 +101,9 @@ impl<U, T> BTree<U, T>
 
     fn dec_length(&mut self) {
         self.length -= 1;
+    }
+
+    pub fn length(&self) -> usize {
+        self.length
     }
 }
