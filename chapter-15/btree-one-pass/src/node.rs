@@ -191,7 +191,7 @@ impl<U, T> Node<U, T>
                         let sibling_keys = self.ref_child(&(pos + 1)).key.clone();
                         self.mut_child(pos).key
                             .extend_from_slice(&sibling_keys[..]);
-                        let sibling_children = self.ref_child(&(*pos + 1))
+                        let sibling_children = self.ref_child(&(pos + 1))
                             .children.clone();
                         self.mut_child(pos).children
                             .extend_from_slice(&sibling_children[..]);
@@ -205,8 +205,8 @@ impl<U, T> Node<U, T>
             // search in subtree
             false => {
                 let (mut child_pos, sibling_pos) = match self.key[*pos].key() < *value {
-                    true => (*pos + 1, *pos),
-                    false => (*pos, *pos + 1),
+                    true => (pos + 1, *pos),
+                    false => (*pos, pos + 1),
                 };
                 debug!("\nchild = {child_pos}, sibling = {sibling_pos}");
                 if !self.ref_child(&child_pos).at_least_order(order) {
@@ -239,14 +239,14 @@ impl<U, T> Node<U, T>
                     } else {
                         let split_key = self.remove_key(pos).unwrap();
                         self.mut_child(pos).key.push(split_key);
-                        let sibling_keys = self.ref_child(&(*pos + 1)).key.clone();
+                        let sibling_keys = self.ref_child(&(pos + 1)).key.clone();
                         self.mut_child(pos).key
                             .extend_from_slice(&sibling_keys[..]);
-                        let sibling_children = self.ref_child(&(*pos + 1))
+                        let sibling_children = self.ref_child(&(pos + 1))
                             .children.clone();
                         self.mut_child(pos).children
                             .extend_from_slice(&sibling_children[..]);
-                        self.children.remove(*pos + 1);
+                        self.children.remove(pos + 1);
                         child_pos = *pos;
                     }
                 };
@@ -278,7 +278,7 @@ impl<U, T> Node<U, T>
     {
         let mut replace = None;
         for i in 0..=1 {
-            let child = self.mut_child(&(*pos + i));
+            let child = self.mut_child(&(pos + i));
             let neighbore = if i == 0 {
                 child.key_len() - 1
             } else { 0 };
